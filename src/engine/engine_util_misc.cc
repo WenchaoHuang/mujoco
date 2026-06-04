@@ -14,6 +14,8 @@
 
 #include "engine/engine_util_misc.h"
 
+#include "engine/engine_inline.h"
+
 #include <ctype.h>
 #include <math.h>
 #include <stdint.h>

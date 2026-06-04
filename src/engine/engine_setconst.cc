@@ -14,6 +14,8 @@
 
 #include "engine/engine_setconst.h"
 
+#include "engine/engine_inline.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -1160,7 +1162,7 @@ static void setStat(mjModel* m, mjData* d) {
 
     // if rotational dof, inherit from body
     int jnt = m->dof_jntid[i];
-    mjtJoint type = m->jnt_type[jnt];
+    mjtJoint type = (mjtJoint) m->jnt_type[jnt];
     int offset = i - m->jnt_dofadr[jnt];
     if (type == mjJNT_BALL  ||
         type == mjJNT_HINGE ||

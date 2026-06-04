@@ -17,6 +17,7 @@
 #include <mujoco/mjdata.h>
 #include <mujoco/mjmodel.h>
 #include <mujoco/mjsan.h>  // IWYU pragma: keep
+#include "engine/engine_inline.h"
 #include "engine/engine_core_util.h"
 #include "engine/engine_crossplatform.h"
 #include "engine/engine_memory.h"
@@ -1648,7 +1649,7 @@ void mjd_ellipsoidFluid(const mjModel* m, mjData* d, int bodyid) {
   for (int j=0; j < m->body_geomnum[bodyid]; j++) {
     const int geomid = m->body_geomadr[bodyid] + j;
 
-    mju_geomSemiAxes(semiaxes, m->geom_size + 3*geomid, m->geom_type[geomid]);
+    mju_geomSemiAxes(semiaxes, m->geom_size + 3*geomid, (mjtGeom) m->geom_type[geomid]);
 
     readFluidGeomInteraction(
       m->geom_fluid + mjNFLUID*geomid, &geom_interaction_coef,

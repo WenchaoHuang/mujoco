@@ -14,6 +14,8 @@
 
 #include "engine/engine_util_sparse.h"
 
+#include "engine/engine_inline.h"
+
 #include <mujoco/mjdata.h>
 #include <mujoco/mjmacro.h>
 #include <mujoco/mjsan.h>  // IWYU pragma: keep

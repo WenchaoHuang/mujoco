@@ -143,7 +143,7 @@ static int arenaAllocEfc(const mjModel* m, mjData* d) {
 #endif
 
 #define X(type, name, nr, nc)                                                 \
-  d->name = mj_arenaAllocByte(d, sizeof(type) * (nr) * (nc), _Alignof(type)); \
+  d->name = (type*) mj_arenaAllocByte(d, sizeof(type) * (nr) * (nc), _Alignof(type)); \
   if (!d->name) {                                                             \
     mj_warning(d, mjWARN_CNSTRFULL, d->narena);                               \
     mj_clearEfc(d);                                                           \
@@ -397,7 +397,7 @@ int mj_addContact(const mjModel* m, mjData* d, const mjContact* con) {
   mj_clearEfc(d);
 
   // copy contact
-  mjContact* dst = mj_arenaAllocByte(d, sizeof(mjContact), _Alignof(mjContact));
+  mjContact* dst = (mjContact*) mj_arenaAllocByte(d, sizeof(mjContact), _Alignof(mjContact));
   if (!dst) {
     mj_warning(d, mjWARN_CONTACTFULL, d->ncon);
     return 1;
@@ -662,7 +662,7 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
       size = 3;
       break;
 
-    case mjEQ_WELD:                 // fix relative position and orientation
+    case mjEQ_WELD: {               // fix relative position and orientation
       // find global points, body semantic
       mj_equalityAnchors(m, d, i, pos[0], pos[1], body_id, body_id + 1);
 
@@ -723,6 +723,7 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
 
       size = 6;
       break;
+    }
 
     case mjEQ_JOINT:                // couple joint values with cubic
     case mjEQ_TENDON:               // couple tendon lengths with cubic
@@ -979,7 +980,7 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
       break;
     }
 
-  case mjEQ_FLEX:
+  case mjEQ_FLEX: {
     // edge constraint mode: add one constraint per non-rigid edge
     flex_edgeadr = m->flex_edgeadr[id[0]];
     flex_edgenum = m->flex_edgenum[id[0]];
@@ -1009,8 +1010,9 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
       }
     }
     break;
+  }
 
-    case mjEQ_FLEXVERT:
+    case mjEQ_FLEXVERT: {
       // add two constraints per vertex
       flex_vertadr = m->flex_vertadr[id[0]];
       flex_vertnum = m->flex_vertnum[id[0]];
@@ -1035,6 +1037,7 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
         }
       }
       break;
+    }
 
     default:                    // SHOULD NOT OCCUR
       mjERROR("invalid equality constraint type %d", m->eq_type[i]);
@@ -1777,7 +1780,7 @@ void mj_diagApprox(const mjModel* m, mjData* d) {
                     m->tendon_invweight0[m->eq_obj2id[id]]);
         break;
 
-      case mjEQ_FLEX:
+      case mjEQ_FLEX: {
         // process all non-rigid edges for this flex
         f = m->eq_obj1id[id];
         int flex_edgeadr = m->flex_edgeadr[f];
@@ -1791,8 +1794,9 @@ void mj_diagApprox(const mjModel* m, mjData* d) {
         // adjust constraint counter
         i--;
         break;
+      }
 
-      case mjEQ_FLEXVERT:
+      case mjEQ_FLEXVERT: {
         // process all vertices for this flex
         f = m->eq_obj1id[id];
         int vertadr = m->flex_vertadr[f];
@@ -1806,6 +1810,7 @@ void mj_diagApprox(const mjModel* m, mjData* d) {
         // adjust constraint counter
         i--;
         break;
+      }
 
       case mjEQ_FLEXSTRAIN: {
         // strain constraints: use avg inv weight of element's nodes
@@ -2920,8 +2925,8 @@ static void mj_makeY(const mjModel* m, mjData* d, int flg_diagexact) {
   // sparse Y = backsubM2(J')' and its transpose
   if (mj_isSparse(m)) {
     // arena-allocate Y rownnz and rowadr
-    d->efc_Y_rownnz = mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
-    d->efc_Y_rowadr = mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
+    d->efc_Y_rownnz = (int*) mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
+    d->efc_Y_rowadr = (int*) mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
     if (!d->efc_Y_rownnz || !d->efc_Y_rowadr) {
       mj_warning(d, mjWARN_CNSTRFULL, d->narena);
       mj_clearEfc(d);
@@ -2937,8 +2942,8 @@ static void mj_makeY(const mjModel* m, mjData* d, int flg_diagexact) {
                               m->M_rownnz, m->M_rowadr, m->M_colind, marker);
 
     // arena-allocate values and column indices
-    d->efc_Y = mj_arenaAllocByte(d, sizeof(mjtNum) * d->nY, _Alignof(mjtNum));
-    d->efc_Y_colind = mj_arenaAllocByte(d, sizeof(int) * d->nY, _Alignof(int));
+    d->efc_Y = (mjtNum*) mj_arenaAllocByte(d, sizeof(mjtNum) * d->nY, _Alignof(mjtNum));
+    d->efc_Y_colind = (int*) mj_arenaAllocByte(d, sizeof(int) * d->nY, _Alignof(int));
     if (!d->efc_Y || !d->efc_Y_colind) {
       mj_warning(d, mjWARN_CNSTRFULL, d->narena);
       mj_clearEfc(d);
@@ -2971,7 +2976,7 @@ static void mj_makeY(const mjModel* m, mjData* d, int flg_diagexact) {
   else {
     // arena-allocate efc_Y
     d->nY = nefc * nv;
-    d->efc_Y = mj_arenaAllocByte(d, sizeof(mjtNum) * d->nY, _Alignof(mjtNum));
+    d->efc_Y = (mjtNum*) mj_arenaAllocByte(d, sizeof(mjtNum) * d->nY, _Alignof(mjtNum));
     if (!d->efc_Y) {
       mj_warning(d, mjWARN_CNSTRFULL, d->narena);
       mj_clearEfc(d);
@@ -3016,8 +3021,8 @@ static void mj_makeAR(const mjModel* m, mjData* d) {
                         d->efc_Y_rownnz, d->efc_Y_rowadr, d->efc_Y_colind);
 
     // allocate AR row nonzeros and addresses on arena
-    d->efc_AR_rownnz = mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
-    d->efc_AR_rowadr = mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
+    d->efc_AR_rownnz = (int*) mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
+    d->efc_AR_rowadr = (int*) mj_arenaAllocByte(d, sizeof(int) * nefc, _Alignof(int));
     if (!d->efc_AR_rownnz || !d->efc_AR_rowadr) {
       mj_warning(d, mjWARN_CNSTRFULL, d->narena);
       mj_clearEfc(d);
@@ -3033,8 +3038,8 @@ static void mj_makeAR(const mjModel* m, mjData* d) {
         d->efc_Y_rownnz, d->efc_Y_rowadr, d->efc_Y_colind, Y_rowsuper, d);
 
     // allocate A values and column indices on arena
-    d->efc_AR = mj_arenaAllocByte(d, sizeof(mjtNum) * d->nA, _Alignof(mjtNum));
-    d->efc_AR_colind = mj_arenaAllocByte(d, sizeof(int) * d->nA, _Alignof(int));
+    d->efc_AR = (mjtNum*) mj_arenaAllocByte(d, sizeof(mjtNum) * d->nA, _Alignof(mjtNum));
+    d->efc_AR_colind = (int*) mj_arenaAllocByte(d, sizeof(int) * d->nA, _Alignof(int));
     if (!d->efc_AR || !d->efc_AR_colind) {
       mj_warning(d, mjWARN_CNSTRFULL, d->narena);
       mj_clearEfc(d);
@@ -3066,7 +3071,7 @@ static void mj_makeAR(const mjModel* m, mjData* d) {
   else {
     // arena-allocate efc_AR
     d->nA = nefc * nefc;
-    d->efc_AR = mj_arenaAllocByte(d, sizeof(mjtNum) * d->nA, _Alignof(mjtNum));
+    d->efc_AR = (mjtNum*) mj_arenaAllocByte(d, sizeof(mjtNum) * d->nA, _Alignof(mjtNum));
     if (!d->efc_AR) {
       mj_warning(d, mjWARN_CNSTRFULL, d->narena);
       mj_clearEfc(d);

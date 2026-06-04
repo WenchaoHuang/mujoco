@@ -1,4 +1,4 @@
-// Copyright 2021 DeepMind Technologies Limited
+﻿// Copyright 2021 DeepMind Technologies Limited
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,21 @@
 #ifndef MUJOCO_SRC_ENGINE_ENGINE_ARRAY_SAFETY_H_
 #define MUJOCO_SRC_ENGINE_ENGINE_ARRAY_SAFETY_H_
 
-#ifdef __cplusplus
-#error This file should not be used from C++ code.
-#endif
-
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __cplusplus
+template <typename T, size_t N>
+constexpr size_t mjSIZEOFARRAY_impl(const T (&)[N]) {
+	return N;
+}
+
+#define mjSIZEOFARRAY(arr) mjSIZEOFARRAY_impl(arr)
+#else
 // Evaluates to sizeof(arr) if arr is a char array, and emits a compiler error
 // otherwise. In particular, emits a compiler error if arr is a char*.
 #define mjSIZEOFARRAY(arr) _Generic(&(arr), char(*)[sizeof(arr)]: sizeof(arr))
+#endif
 
 #define mjSNPRINTF(dest, ...) snprintf(dest, mjSIZEOFARRAY(dest), __VA_ARGS__)
 

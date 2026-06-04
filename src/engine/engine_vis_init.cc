@@ -14,6 +14,8 @@
 
 #include "engine/engine_vis_init.h"
 
+#include "engine/engine_inline.h"
+
 #include <math.h>
 #include <string.h>
 

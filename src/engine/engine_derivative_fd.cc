@@ -20,6 +20,7 @@
 #include <mujoco/mjmacro.h>
 #include <mujoco/mjmodel.h>
 #include <mujoco/mjsan.h>  // IWYU pragma: keep
+#include "engine/engine_inline.h"
 #include "engine/engine_forward.h"
 #include "engine/engine_inverse.h"
 #include "engine/engine_memory.h"

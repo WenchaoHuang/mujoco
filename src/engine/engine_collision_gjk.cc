@@ -2320,7 +2320,7 @@ mjtNum mjc_ccd(const mjCCDConfig* config, mjCCDStatus* status, mjCCDObj* obj1, m
     // allocate memory for polytope
     int N = config->max_iterations;
     pt.maxfaces = 6 * N;
-    uint8_t* buffer = config->buffer;
+    uint8_t* buffer = (uint8_t*) config->buffer;
     pt.verts = (Vertex*)buffer;
     buffer += align8(sizeof(Vertex) * (5 + N));
     pt.faces = (Face*)buffer;
@@ -2339,7 +2339,7 @@ mjtNum mjc_ccd(const mjCCDConfig* config, mjCCDStatus* status, mjCCDObj* obj1, m
     } else {
       ret = polytope4(&pt, status, obj1, obj2);
     }
-    status->epa_status = ret;
+    status->epa_status = (mjEPAStatus) ret;
 
     // simplex not on boundary (objects are penetrating)
     if (!ret) {

@@ -14,88 +14,88 @@
 
 set(MUJOCO_ENGINE_SRCS
     engine_array_safety.h
-    engine_callback.c
+    engine_callback.cc
     engine_callback.h
-    engine_collision_box.c
-    engine_collision_convex.c
+    engine_collision_box.cc
+    engine_collision_convex.cc
     engine_collision_convex.h
-    engine_collision_driver.c
+    engine_collision_driver.cc
     engine_collision_driver.h
-    engine_collision_gjk.c
+    engine_collision_gjk.cc
     engine_collision_gjk.h
-    engine_collision_primitive.c
+    engine_collision_primitive.cc
     engine_collision_primitive.h
-    engine_collision_sdf.c
+    engine_collision_sdf.cc
     engine_collision_sdf.h
-    engine_core_constraint.c
+    engine_core_constraint.cc
     engine_core_constraint.h
-    engine_core_util.c
+    engine_core_util.cc
     engine_core_util.h
-    engine_core_smooth.c
+    engine_core_smooth.cc
     engine_core_smooth.h
     engine_crossplatform.cc
     engine_crossplatform.h
-    engine_derivative.c
+    engine_derivative.cc
     engine_derivative.h
-    engine_derivative_fd.c
+    engine_derivative_fd.cc
     engine_derivative_fd.h
-    engine_forward.c
+    engine_forward.cc
     engine_forward.h
     engine_global_table.h
-    engine_inverse.c
+    engine_inverse.cc
     engine_inverse.h
-    engine_init.c
+    engine_init.cc
     engine_init.h
     engine_inline.h
-    engine_island.c
+    engine_island.cc
     engine_island.h
-    engine_io.c
+    engine_io.cc
     engine_io.h
     engine_macro.h
-    engine_memory.c
+    engine_memory.cc
     engine_memory.h
-    engine_name.c
+    engine_name.cc
     engine_name.h
-    engine_passive.c
+    engine_passive.cc
     engine_passive.h
     engine_plugin.cc
     engine_plugin.h
-    engine_print.c
+    engine_print.cc
     engine_print.h
-    engine_ray.c
+    engine_ray.cc
     engine_ray.h
-    engine_sensor.c
+    engine_sensor.cc
     engine_sensor.h
-    engine_setconst.c
+    engine_setconst.cc
     engine_setconst.h
-    engine_sleep.c
+    engine_sleep.cc
     engine_sleep.h
-    engine_solver.c
+    engine_solver.cc
     engine_solver.h
     engine_sort.h
-    engine_support.c
+    engine_support.cc
     engine_support.h
     engine_thread.cc
     engine_thread.h
-    engine_util_blas.c
+    engine_util_blas.cc
     engine_util_blas.h
     engine_util_blas_avx.h
-    engine_util_errmem.c
+    engine_util_errmem.cc
     engine_util_errmem.h
-    engine_util_misc.c
+    engine_util_misc.cc
     engine_util_misc.h
-    engine_util_solve.c
+    engine_util_solve.cc
     engine_util_solve.h
-    engine_util_sparse.c
+    engine_util_sparse.cc
     engine_util_sparse.h
     engine_util_sparse_avx.h
-    engine_util_spatial.c
+    engine_util_spatial.cc
     engine_util_spatial.h
-    engine_vis_init.c
+    engine_vis_init.cc
     engine_vis_init.h
-    engine_vis_interact.c
+    engine_vis_interact.cc
     engine_vis_interact.h
-    engine_vis_visualize.c
+    engine_vis_visualize.cc
     engine_vis_visualize.h
 )
 

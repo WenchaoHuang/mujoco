@@ -1,4 +1,4 @@
-// Copyright 2021 DeepMind Technologies Limited
+﻿// Copyright 2021 DeepMind Technologies Limited
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -757,7 +757,7 @@ void mjc_initCCDObj(mjCCDObj* obj, const mjModel* m, const mjData* d, int g, mjt
     case mjGEOM_BOX:
       obj->support = mjc_boxSupport;
       break;
-    case mjGEOM_HFIELD:
+    case mjGEOM_HFIELD: {
       obj->center = mjc_center;
       obj->support = mjc_prism_support;
 
@@ -767,6 +767,7 @@ void mjc_initCCDObj(mjCCDObj* obj, const mjModel* m, const mjData* d, int g, mjt
       mju_copy(obj->size, m->hfield_size + 4*hid, 4);
       obj->data.hfield.hfield_data = m->hfield_data + m->hfield_adr[hid];
       break;
+    }
     default:
       obj->support = NULL;
       break;
@@ -1393,7 +1394,7 @@ void mjc_fixNormal(const mjModel* m, const mjData* d, mjPreContact* con, int g1,
     if (gid[i] < 0) {
       type[i] = mjGEOM_NONE;
     } else {
-      type[i] = m->geom_type[gid[i]];
+      type[i] = static_cast<mjtGeom>(m->geom_type[gid[i]]);
     }
 
     // set to mjGEOM_NONE if type cannot be processed

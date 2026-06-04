@@ -14,6 +14,8 @@
 
 #include "engine/engine_util_errmem.h"
 
+#include "engine/engine_inline.h"
+
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>

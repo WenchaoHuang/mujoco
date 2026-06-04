@@ -1120,7 +1120,7 @@ void mj_ellipsoidFluidModel(const mjModel* m, mjData* d, int bodyid) {
   for (int j=0; j < m->body_geomnum[bodyid]; j++) {
     const int geomid = m->body_geomadr[bodyid] + j;
 
-    mju_geomSemiAxes(semiaxes, m->geom_size + 3*geomid, m->geom_type[geomid]);
+    mju_geomSemiAxes(semiaxes, m->geom_size + 3*geomid, (mjtGeom) m->geom_type[geomid]);
 
     readFluidGeomInteraction(
       m->geom_fluid + mjNFLUID*geomid, &geom_interaction_coef,

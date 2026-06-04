@@ -106,18 +106,6 @@ void mj_defaultOption(mjOption* opt) {
 }
 
 
-//------------------------------- mjStatistic ------------------------------------------------------
-
-// set statistics to default values; compute later in compiler
-void mj_defaultStatistic(mjStatistic* stat) {
-  mju_zero3(stat->center);
-  stat->extent = 2;
-  stat->meaninertia = 1;
-  stat->meanmass = 1;
-  stat->meansize = 0.2;
-}
-
-
 //------------------------------- mjVisual ---------------------------------------------------------
 
 // set 4 floats

@@ -325,7 +325,7 @@ void mj_fwdActuation(const mjModel* m, mjData* d) {
 
     // extract info
     const mjtNum* dynprm = m->actuator_dynprm + i*mjNDYN;
-    mjtDyn dyntype = m->actuator_dyntype[i];
+    mjtDyn dyntype = (mjtDyn) m->actuator_dyntype[i];
 
     // index into the last element in act. For most actuators it's also the
     // first element, but actuator plugins might store their own state in act
@@ -500,7 +500,7 @@ void mj_fwdActuation(const mjModel* m, mjData* d) {
     // extract info
     const mjtNum* dynprm = m->actuator_dynprm + mjNDYN*i;
     const mjtNum* gainprm = m->actuator_gainprm + mjNGAIN*i;
-    mjtGain gaintype = m->actuator_gaintype[i];
+    mjtGain gaintype = (mjtGain) m->actuator_gaintype[i];
     int actnum = m->actuator_actnum[i];
 
     // handle according to gain type
@@ -584,7 +584,7 @@ void mj_fwdActuation(const mjModel* m, mjData* d) {
 
     // extract bias info
     const mjtNum* biasprm = m->actuator_biasprm + mjNBIAS*i;
-    mjtBias biastype = m->actuator_biastype[i];
+    mjtBias biastype = (mjtBias) m->actuator_biastype[i];
 
     // handle according to bias type
     switch (biastype) {

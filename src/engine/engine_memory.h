@@ -23,6 +23,9 @@
 
 #ifdef __cplusplus
 #include <cstddef>
+  #ifndef _Alignof
+    #define _Alignof alignof
+  #endif
 extern "C" {
 #else
 #include <stddef.h>

@@ -14,6 +14,8 @@
 
 #include "engine/engine_support.h"
 
+#include "engine/engine_inline.h"
+
 #include <inttypes.h>  // IWYU pragma: keep
 #include <stddef.h>
 
@@ -192,7 +194,7 @@ int mj_stateSize(const mjModel* m, int sig) {
 
   int size = 0;
   for (int i=0; i < mjNSTATE; i++) {
-    mjtState element = 1<<i;
+    mjtState element = (mjtState) (1<<i);
     if (element & sig) {
       size += mj_stateElemSize(m, element);
     }
@@ -216,7 +218,7 @@ void mj_getState(const mjModel* m, const mjData* d, mjtNum* state, int sig) {
 
   int adr = 0;
   for (int i=0; i < mjNSTATE; i++) {
-    mjtState element = 1<<i;
+    mjtState element = (mjtState) (1<<i);
     if (element & sig) {
       int size = mj_stateElemSize(m, element);
 
@@ -257,7 +259,7 @@ void mj_extractState(const mjModel* m, const mjtNum* src, int srcsig, mjtNum* ds
   }
 
   for (int i=0; i < mjNSTATE; i++) {
-    mjtState element = 1<<i;
+    mjtState element = (mjtState) (1<<i);
     if (element & srcsig) {
       int size = mj_stateElemSize(m, element);
       if (element & dstsig) {
@@ -284,7 +286,7 @@ void mj_setState(const mjModel* m, mjData* d, const mjtNum* state, int sig) {
 
   int adr = 0;
   for (int i=0; i < mjNSTATE; i++) {
-    mjtState element = 1<<i;
+    mjtState element = (mjtState) (1<<i);
     if (element & sig) {
       int size = mj_stateElemSize(m, element);
 
@@ -320,7 +322,7 @@ void mj_copyState(const mjModel* m, const mjData* src, mjData* dst, int sig) {
   }
 
   for (int i=0; i < mjNSTATE; i++) {
-    mjtState element = 1<<i;
+    mjtState element = (mjtState) (1<<i);
     if (element & sig) {
       int size = mj_stateElemSize(m, element);
 

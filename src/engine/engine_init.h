@@ -27,7 +27,15 @@ void mj_defaultOption(mjOption* opt);
 void mj_defaultVisual(mjVisual* vis);
 
 // set statistics to default values
-void mj_defaultStatistic(mjStatistic* stat);
+static inline void mj_defaultStatistic(mjStatistic* stat) {
+	stat->center[0] = 0;
+	stat->center[1] = 0;
+	stat->center[2] = 0;
+	stat->extent = 2;
+	stat->meaninertia = 1;
+	stat->meanmass = 1;
+	stat->meansize = 0.2;
+}
 
 // set solver parameters to default values
 void mj_defaultSolRefImp(mjtNum* solref, mjtNum* solimp);

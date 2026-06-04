@@ -400,7 +400,7 @@ static int matchContact(const mjModel* m, const mjData* d, int conid,
   // site filter
   if (type1 == mjOBJ_SITE) {
     if (!mju_insideGeom(d->site_xpos + 3 * id1, d->site_xmat + 9 * id1,
-                        m->site_size + 3 * id1, m->site_type[id1], d->contact[conid].pos)) {
+                        m->site_size + 3 * id1, (mjtGeom) m->site_type[id1], d->contact[conid].pos)) {
       return 0;
     }
   }
@@ -733,7 +733,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
   case mjSENS_FRAMEYAXIS:                             // y-axis of object's frame
   case mjSENS_FRAMEZAXIS:                             // z-axis of object's frame
     // get xpos and xmat pointers for object frame
-    get_xpos_xmat(d, objtype, objid, i, &xpos, &xmat);
+    get_xpos_xmat(d, (mjtObj) objtype, objid, i, &xpos, &xmat);
 
     // reference frame unspecified: global frame
     if (refid == -1) {
@@ -750,7 +750,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
 
     // reference frame specified
     else {
-      get_xpos_xmat(d, reftype, refid, i, &xpos_ref, &xmat_ref);
+      get_xpos_xmat(d, (mjtObj) reftype, refid, i, &xpos_ref, &xmat_ref);
       if (type == mjSENS_FRAMEPOS) {
         mju_sub3(rvec, xpos, xpos_ref);
         mju_mulMatTVec3(sensordata, xmat_ref, rvec);
@@ -767,7 +767,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
   {
     // get global object quaternion
     mjtNum objquat[4];
-    get_xquat(m, d, objtype, objid, i, objquat);
+    get_xquat(m, d, (mjtObj) objtype, objid, i, objquat);
 
     // reference frame unspecified: copy object quaternion
     if (refid == -1) {
@@ -775,7 +775,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
     } else {
       // reference frame specified, get global reference quaternion
       mjtNum refquat[4];
-      get_xquat(m, d, reftype, refid, i, refquat);
+      get_xquat(m, d, (mjtObj) reftype, refid, i, refquat);
 
       // relative quaternion
       mju_negQuat(refquat, refquat);
@@ -789,7 +789,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
     break;
 
   case mjSENS_INSIDESITE:                             // 1 if object is inside site
-    get_xpos_xmat(d, objtype, objid, i, &xpos, &xmat);
+    get_xpos_xmat(d, (mjtObj) objtype, objid, i, &xpos, &xmat);
 
     // for massless bodies with positive subtree mass (e.g., flex parents),
     // xipos is the static body frame origin; use subtree_com instead
@@ -802,7 +802,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
     sensordata[0] = mju_insideGeom(d->site_xpos + 3*refid,
                                    d->site_xmat + 9*refid,
                                    m->site_size + 3*refid,
-                                   m->site_type[refid],
+                                   (mjtGeom) m->site_type[refid],
                                    xpos);
     break;
 
@@ -965,8 +965,8 @@ static void mj_computeSensorVel(const mjModel* m, mjData* d, int i, mjtNum* sens
       mjtNum *xpos, *xmat, *xpos_ref, *xmat_ref, xvel_ref[6], rel_vel[6], cross[3], rvec[3];
 
       // in global frame: object and reference position, reference orientation and velocity
-      get_xpos_xmat(d, objtype, objid, i, &xpos, &xmat);
-      get_xpos_xmat(d, reftype, refid, i, &xpos_ref, &xmat_ref);
+      get_xpos_xmat(d, (mjtObj) objtype, objid, i, &xpos, &xmat);
+      get_xpos_xmat(d, (mjtObj) reftype, refid, i, &xpos_ref, &xmat_ref);
       mj_objectVelocity(m, d, reftype, refid, xvel_ref, 0);
 
       // subtract velocities
@@ -1109,7 +1109,7 @@ static void mj_computeSensorAcc(const mjModel* m, mjData* d, int i, mjtNum* sens
       // find matching contacts
       for (int j=0; j < d->ncon; j++) {
         // check match condition
-        int match_j = matchContact(m, d, j, objtype, objid, reftype, refid);
+        int match_j = matchContact(m, d, j, (mjtObj) objtype, objid, (mjtObj) reftype, refid);
         if (!match_j) {
           continue;
         }
@@ -1614,7 +1614,7 @@ void mj_sensorVel(const mjModel* m, mjData* d) {
     }
 
     if (m->sensor_needstage[i] == mjSTAGE_VEL) {
-      mjtSensor type = m->sensor_type[i];
+      mjtSensor type = (mjtSensor) m->sensor_type[i];
       int adr = m->sensor_adr[i];
       mjtNum* sensordata = d->sensordata + adr;
 
@@ -1668,7 +1668,7 @@ void mj_sensorAcc(const mjModel* m, mjData* d) {
     }
 
     if (m->sensor_needstage[i] == mjSTAGE_ACC) {
-      mjtSensor type = m->sensor_type[i];
+      mjtSensor type = (mjtSensor) m->sensor_type[i];
       int adr = m->sensor_adr[i];
       mjtNum* sensordata = d->sensordata + adr;
 

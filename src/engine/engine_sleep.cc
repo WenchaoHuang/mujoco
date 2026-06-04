@@ -14,6 +14,8 @@
 
 #include "engine/engine_sleep.h"
 
+#include "engine/engine_inline.h"
+
 #include <stdio.h>
 #include <stddef.h>
 
@@ -397,7 +399,7 @@ int mj_wakeEquality(const mjModel* m, mjData* d) {
     // skip inactive
     if (!d->eq_active[i]) continue;
 
-    mjtEq eqtype = m->eq_type[i];
+    mjtEq eqtype = (mjtEq) m->eq_type[i];
     int id1 = m->eq_obj1id[i];
     int id2 = m->eq_obj2id[i];
     int tree1, tree2;
@@ -471,8 +473,8 @@ int mj_wakeEquality(const mjModel* m, mjData* d) {
     }
 
     // get sleep state
-    mjtSleepState s1 = tree1 >= 0 ? d->tree_awake[tree1] : mjS_STATIC;
-    mjtSleepState s2 = tree2 >= 0 ? d->tree_awake[tree2] : mjS_STATIC;
+    mjtSleepState s1 = tree1 >= 0 ? (mjtSleepState) d->tree_awake[tree1] : mjS_STATIC;
+    mjtSleepState s2 = tree2 >= 0 ? (mjtSleepState) d->tree_awake[tree2] : mjS_STATIC;
 
     // neither is asleep, nothing to do
     if (s1 != mjS_ASLEEP && s2 != mjS_ASLEEP) {
@@ -691,13 +693,13 @@ static mjtSleepState mj_actuatorSleepState(const mjModel* m, const mjData* d, in
 
 // return sleep state of equality i
 static mjtSleepState mj_equalitySleepState(const mjModel* m, const mjData* d, int i) {
-  mjtEq eqtype = m->eq_type[i];
+  mjtEq eqtype = (mjtEq) m->eq_type[i];
   mjtObj objtype;
 
   switch (eqtype) {
     case mjEQ_CONNECT:
     case mjEQ_WELD:
-      objtype = m->eq_objtype[i];
+      objtype = (mjtObj) m->eq_objtype[i];
       break;
     case mjEQ_JOINT:
       objtype = mjOBJ_JOINT;
@@ -727,9 +729,9 @@ static mjtSleepState mj_equalitySleepState(const mjModel* m, const mjData* d, in
 
 // return sleep state of sensor i (AWAKE or ASLEEP, never STATIC)
 static mjtSleepState mj_sensorSleepState(const mjModel* m, const mjData* d, int i) {
-  mjtSensor type = m->sensor_type[i];
-  mjtObj objtype = m->sensor_objtype[i];
-  mjtObj reftype = m->sensor_reftype[i];
+  mjtSensor type = (mjtSensor) m->sensor_type[i];
+  mjtObj objtype = (mjtObj) m->sensor_objtype[i];
+  mjtObj reftype = (mjtObj) m->sensor_reftype[i];
 
   // special handling for specific sensor types
   switch (type) {
@@ -785,7 +787,7 @@ static mjtSleepState mj_sensorSleepState(const mjModel* m, const mjData* d, int 
 
 // return sleep state of object i
 mjtSleepState mj_sleepState(const mjModel* m, const mjData* d, mjtObj type, int i) {
-  const char* typename;
+  const char* type_name;
 
   switch (type) {
 
@@ -844,9 +846,9 @@ mjtSleepState mj_sleepState(const mjModel* m, const mjData* d, mjtObj type, int 
 
   // unsupported
   default:
-    typename = mju_type2Str(type);
-    if (typename) {
-      mjERROR("unsupported object type '%s'", typename);
+    type_name = mju_type2Str(type);
+    if (type_name) {
+      mjERROR("unsupported object type '%s'", type_name);
     } else {
       mjERROR("unsupported object type %d", type);
     }

@@ -72,7 +72,7 @@ static const int ID = 54321;
 static int getnsize(void) {
   int cnt = 0;
 
-#define X(name) cnt += _Generic(MJMODEL_MEMBER(name), mjtSize: 1, default: 0);
+#define X(name) cnt++;
   MJMODEL_SIZES
 #undef X
 
@@ -395,7 +395,7 @@ void mj_makeModel(mjModel** dest,
 #undef X
 
   // allocate buffer
-  m->buffer = mju_malloc(m->nbuffer);
+  m->buffer = (char*) mju_malloc(m->nbuffer);
   if (!m->buffer) {
     if (allocate) mju_free(m);
     mjERROR("could not allocate mjModel buffer");
@@ -1012,7 +1012,7 @@ static void mj_setPtrData(const mjModel* m, mjData* d) {
   MJDATA_ARENA_POINTERS
 #undef X
 
-  d->contact = d->arena;
+  d->contact = (mjContact*) d->arena;
 }
 
 
@@ -1086,14 +1086,14 @@ void mj_makeRawData(mjData** dest, const mjModel* m) {
   d->narena = m->narena;
 
   // allocate buffer
-  d->buffer = mju_malloc(d->nbuffer);
+  d->buffer = (char*) mju_malloc(d->nbuffer);
   if (!d->buffer) {
     if (allocate) mju_free(d);
     mjERROR("could not allocate mjData buffer");
   }
 
   // allocate arena
-  d->arena = mju_malloc(d->narena);
+  d->arena = (char*) mju_malloc(d->narena);
   if (!d->arena) {
     mju_free(d->buffer);
     if (allocate) mju_free(d);
@@ -1247,7 +1247,7 @@ mjData* mj_copyDataVisual(mjData* dest, const mjModel* m, const mjData* src, int
   #define MJ_D(n) n
 
   // restore contact pointer
-  dest->contact = dest->arena;
+  dest->contact = (mjContact*) dest->arena;
 
   // restore plugin_data
   if (plugin_data_size) {
@@ -1291,9 +1291,9 @@ static void _resetData(const mjModel* m, mjData* d, unsigned char debug_value) {
   mjtNum* plugin_state;
   uintptr_t* plugindata;
   if (d->nplugin) {
-    plugin_state = mju_malloc(sizeof(mjtNum) * m->npluginstate);
+    plugin_state = (mjtNum*) mju_malloc(sizeof(mjtNum) * m->npluginstate);
     memcpy(plugin_state, d->plugin_state, sizeof(mjtNum) * m->npluginstate);
-    plugindata = mju_malloc(sizeof(uintptr_t) * m->nplugin);
+    plugindata = (uintptr_t*) mju_malloc(sizeof(uintptr_t) * m->nplugin);
     memcpy(plugindata, d->plugin_data, sizeof(uintptr_t) * m->nplugin);
   }
 
@@ -1320,7 +1320,7 @@ static void _resetData(const mjModel* m, mjData* d, unsigned char debug_value) {
 #define X(type, name, nr, nc) d->name = NULL;
   MJDATA_ARENA_POINTERS
 #undef X
-  d->contact = d->arena;
+  d->contact = (mjContact*) d->arena;
 
   // clear memory utilization stats
   d->maxuse_stack = 0;
@@ -2063,7 +2063,7 @@ const char* mj_validateReferences(const mjModel* m) {
     }
   }
   for (int i=0; i < m->nsensor; i++) {
-    mjtSensor sensor_type = m->sensor_type[i];
+    mjtSensor sensor_type = (mjtSensor) m->sensor_type[i];
     int sensor_size;
     if (sensor_type == mjSENS_PLUGIN) {
       const mjpPlugin* plugin = mjp_getPluginAtSlot(m->plugin[m->sensor_plugin[i]]);
@@ -2082,14 +2082,14 @@ const char* mj_validateReferences(const mjModel* m) {
     if (sensor_adr < 0 || sensor_adr + sensor_size > m->nsensordata) {
       return "Invalid model: sensor_adr out of bounds.";
     }
-    int nobj = numObjects(m, m->sensor_objtype[i]);
+    int nobj = numObjects(m, (mjtObj) m->sensor_objtype[i]);
     if (nobj == -2) {
       return "Invalid model: invalid sensor_objtype";
     }
     if (nobj != -1 && (m->sensor_objid[i] < 0 || m->sensor_objid[i] >= nobj)) {
       return "Invalid model: invalid sensor_objid";
     }
-    nobj = numObjects(m, m->sensor_reftype[i]);
+    nobj = numObjects(m, (mjtObj) m->sensor_reftype[i]);
     if (nobj == -2) {
       return "Invalid model: invalid sensor_reftype";
     }
@@ -2123,7 +2123,7 @@ const char* mj_validateReferences(const mjModel* m) {
   for (int i=0; i < m->ntuple; i++) {
     for (int j=0; j < m->tuple_size[i]; j++) {
       int adr = m->tuple_adr[i] + j;
-      int nobj = numObjects(m, m->tuple_objtype[adr]);
+      int nobj = numObjects(m, (mjtObj) m->tuple_objtype[adr]);
       if (nobj == -2) {
         return "Invalid model: invalid tuple_objtype";
       }

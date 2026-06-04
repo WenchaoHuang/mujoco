@@ -62,6 +62,47 @@ static void printStr(FILE* fp, const char* name, const char* value) {
   fprintf(fp, "\n");
 }
 
+static const char* scalarFormat(int, const char*) {
+  return INT_FORMAT;
+}
+
+static const char* scalarFormat(mjtSize, const char*) {
+  return SIZE_FORMAT;
+}
+
+static const char* scalarFormat(size_t, const char*) {
+  return SIZE_FORMAT;
+}
+
+static const char* scalarFormat(mjtByte, const char*) {
+  return INT_FORMAT;
+}
+
+static const char* scalarFormat(mjtBool, const char*) {
+  return INT_FORMAT;
+}
+
+static const char* scalarFormat(float, const char* float_format) {
+  return float_format;
+}
+
+static const char* scalarFormat(double, const char* float_format) {
+  return float_format;
+}
+
+template<typename T>
+static const char* arrayFormat(const T*, const char* float_format) {
+  return scalarFormat((T) 0, float_format);
+}
+
+static const char* optionFormat(int, const char* float_format) {
+  return INT_FORMAT;
+}
+
+static const char* optionFormat(mjtNum, const char* float_format) {
+  return float_format;
+}
+
 static void printNum(FILE* fp, const char* name, float value, const char* float_format) {
   fprintf(fp, NAME_FORMAT, name);
   fprintf(fp, float_format, value);
@@ -590,12 +631,8 @@ void mj_printFormattedModel(const mjModel* m, const char* filename, const char* 
   fprintf(fp, "SIZES\n");
 #define X( name )                                 \
   if (m->name) {                                  \
-    const char* format = _Generic(                \
-        m->name,                                  \
-        mjtSize : SIZE_FORMAT,                    \
-        default : INT_FORMAT);                    \
     fprintf(fp, NAME_FORMAT, "  " #name);         \
-    fprintf(fp, format, m->name);                 \
+    fprintf(fp, SIZE_FORMAT, m->name);            \
     fprintf(fp, "\n");                            \
   }
 
@@ -605,19 +642,17 @@ void mj_printFormattedModel(const mjModel* m, const char* filename, const char* 
 
   // options
   fprintf(fp, "OPTION\n");
-#define X(type, name, sz)                                             \
-  fprintf(fp, NAME_FORMAT, "  " #name);                               \
-  {                                                                   \
-    const char* format =                                              \
-        _Generic(m->opt.name, mjtNum: float_format, int: INT_FORMAT); \
-    fprintf(fp, format, m->opt.name);                                 \
-  }                                                                   \
+#define X(type, name, sz)                         \
+  fprintf(fp, NAME_FORMAT, "  " #name);           \
+  {                                               \
+    const char* format = optionFormat(m->opt.name, float_format); \
+    fprintf(fp, format, m->opt.name);             \
+  }                                               \
   fprintf(fp, "\n");
 #define XVEC(type, name, sz)                                             \
   fprintf(fp, NAME_FORMAT, "  " #name);                                  \
   {                                                                      \
-    const char* format =                                                 \
-        _Generic(m->opt.name[0], mjtNum: float_format, int: INT_FORMAT); \
+    const char* format = arrayFormat(m->opt.name, float_format);         \
     for (int i = 0; i < sz; i++) {                                       \
       fprintf(fp, format, m->opt.name[i]);                               \
     }                                                                    \
@@ -636,8 +671,7 @@ void mj_printFormattedModel(const mjModel* m, const char* filename, const char* 
 #define X(type, name)                                                       \
   fprintf(fp, NAME_FORMAT, "    " #name);                                   \
   {                                                                         \
-    const char* format =                                                    \
-        _Generic(m->vis.global.name, float: float_format, int: INT_FORMAT); \
+    const char* format = scalarFormat(m->vis.global.name, float_format);   \
     fprintf(fp, format, m->vis.global.name);                                \
   }                                                                         \
   fprintf(fp, "\n");
@@ -658,18 +692,14 @@ void mj_printFormattedModel(const mjModel* m, const char* filename, const char* 
 #define X(type, name, sz)                                                      \
   fprintf(fp, NAME_FORMAT, "    " #name);                                      \
   {                                                                            \
-    const char* format =                                                       \
-        _Generic(m->vis.headlight.name, float: float_format, int: INT_FORMAT); \
+    const char* format = scalarFormat(m->vis.headlight.name, float_format); \
     fprintf(fp, format, m->vis.headlight.name);                                \
   }                                                                            \
   fprintf(fp, "\n");
 #define XVEC(type, name, sz)                                \
   fprintf(fp, NAME_FORMAT, "    " #name);                   \
   {                                                         \
-    const char* format = _Generic(                          \
-        m->vis.headlight.name[0],                           \
-        float: float_format,                                \
-        int: INT_FORMAT);                                   \
+    const char* format = arrayFormat(m->vis.headlight.name, float_format);  \
     for (int i = 0; i < sz; i++) {                          \
       fprintf(fp, format, m->vis.headlight.name[i]);        \
     }                                                       \
@@ -763,14 +793,7 @@ void mj_printFormattedModel(const mjModel* m, const char* filename, const char* 
 
 #define X(type, name, num, sz)                                              \
   if (&m->num == object_class && sz > 0) {                                  \
-    const char* format = _Generic(*m->name,                                 \
-                                  double:  float_format,                    \
-                                  float:   float_format,                    \
-                                  int:     INT_FORMAT,                      \
-                                  mjtByte: INT_FORMAT,                      \
-                                  mjtBool: INT_FORMAT,                      \
-                                  mjtSize: SIZE_FORMAT,                     \
-                                  default: NULL);                           \
+    const char* format = scalarFormat(m->name[0], float_format);            \
     if (format) {                                                           \
       fprintf(fp, "  ");                                                    \
       fprintf(fp, NAME_FORMAT, #name);                                      \
@@ -1268,13 +1291,7 @@ void mj_printFormattedData(const mjModel* m, const mjData* d, const char* filena
       strcmp(#name, "pbase") != 0 &&                                          \
       strcmp(#name, "parena") != 0 &&                                         \
       strcmp(#name, "threadpool") != 0) {                                     \
-    const char* format = _Generic(                                            \
-        d->name,                                                              \
-        int : INT_FORMAT,                                                     \
-        mjtSize : SIZE_FORMAT,                                                \
-        mjtByte : INT_FORMAT,                                                 \
-        mjtBool : INT_FORMAT,                                                 \
-        default : NULL);                                                      \
+    const char* format = scalarFormat(d->name, float_format);                 \
     if (format) {                                                             \
       fprintf(fp, "  ");                                                      \
       fprintf(fp, NAME_FORMAT, #name);                                        \

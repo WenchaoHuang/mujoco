@@ -242,7 +242,7 @@ int mj_name2id(const mjModel* m, int type, const char* name) {
   int* adr = 0;
 
   // get number of objects and name addresses
-  int num = mjLOAD_MULTIPLE*_getnumadr(m, type, &adr, &mapadr);
+  int num = mjLOAD_MULTIPLE*_getnumadr(m, (mjtObj) type, &adr, &mapadr);
 
   // search
   if (num) {    // look up at hash address
@@ -272,7 +272,7 @@ const char* mj_id2name(const mjModel* m, int type, int id) {
   int* adr = 0;
 
   // get number of objects and name addresses
-  int num = _getnumadr(m, type, &adr, &mapadr);
+  int num = _getnumadr(m, (mjtObj) type, &adr, &mapadr);
 
   // id is in [0, num) and the found name is not the empty string "\0"
   if (id >= 0 && id < num && m->names[adr[id]]) {

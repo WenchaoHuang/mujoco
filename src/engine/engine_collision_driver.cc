@@ -1917,7 +1917,7 @@ void mj_narrowphase(const mjModel* m, mjData* d, const int* buffer, int npair, s
   // dispatch narrowphase to threads with local stack allocation for EPA
   {
     mj_markStack(d);
-    arg.epabuffer = mj_stackAllocByte(d, ccd_size * nthread, sizeof(mjtNum));
+    arg.epabuffer = (char*) mj_stackAllocByte(d, ccd_size * nthread, sizeof(mjtNum));
     mju_dispatch(m, d, collisionTask, &arg, nchunk);
     mj_freeStack(d);
   }

@@ -1,4 +1,4 @@
-// Copyright 2025 DeepMind Technologies Limited
+﻿// Copyright 2025 DeepMind Technologies Limited
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #include <mujoco/mujoco.h>
 
 #ifdef __cplusplus
-  #define restrict __restrict__
+#define restrict  __restrict
   extern "C" {
 #endif
 
@@ -482,7 +482,6 @@ void mji_copy9(mjtNum* restrict res, const mjtNum data[9]) {
 
 #ifdef __cplusplus
   }  // extern "C"
-  #undef restrict
 #endif
 
 #endif  // MUJOCO_SRC_ENGINE_ENGINE_INLINE_H_

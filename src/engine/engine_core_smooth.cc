@@ -110,7 +110,7 @@ void mj_kinematics1(const mjModel* m, mjData* d) {
         // get joint id, qpos address, joint type
         int jid = jntadr + j;
         int qadr = m->jnt_qposadr[jid];
-        mjtJoint jtype = m->jnt_type[jid];
+        mjtJoint jtype = (mjtJoint) m->jnt_type[jid];
 
         // compute axis in global frame; ball jnt_axis is (0,0,1), set by compiler
         mji_rotVecQuat(xaxis, m->jnt_axis+3*jid, xquat);
@@ -2609,7 +2609,7 @@ void mj_rnePostConstraint(const mjModel* m, mjData* d) {
       i++;
       break;
 
-    case mjEQ_FLEX:
+    case mjEQ_FLEX: {
       // increment with number of non-rigid edges
       k = m->eq_obj1id[id];
       int flex_edgeadr = m->flex_edgeadr[k];
@@ -2621,11 +2621,13 @@ void mj_rnePostConstraint(const mjModel* m, mjData* d) {
         }
       }
       break;
+    }
 
-    case mjEQ_FLEXVERT:
+    case mjEQ_FLEXVERT: {
       k = m->eq_obj1id[id];
       i += 2*m->flex_vertnum[k];
       break;
+    }
 
     case mjEQ_FLEXSTRAIN: {
       // increment: trilinear uses 2 center (I1,J-1) + 3*ngauss shear, quadratic uses 6*ngauss

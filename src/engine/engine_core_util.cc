@@ -623,7 +623,7 @@ void mj_jacDot(const mjModel* m, const mjData* d,
     mjtNum* cdof = d->cdof+6*i;
 
     // check for quaternion
-    mjtJoint type = m->jnt_type[m->dof_jntid[i]];
+    mjtJoint type = (mjtJoint) m->jnt_type[m->dof_jntid[i]];
     int dofadr = m->jnt_dofadr[m->dof_jntid[i]];
     int is_quat = type == mjJNT_BALL || (type == mjJNT_FREE && i >= dofadr + 3);
 
@@ -709,7 +709,7 @@ void mj_jacDotSparse(const mjModel* m, const mjData* d,
     mjtNum* cdof = d->cdof+6*da;
 
     // check for quaternion
-    mjtJoint type = m->jnt_type[m->dof_jntid[da]];
+    mjtJoint type = (mjtJoint) m->jnt_type[m->dof_jntid[da]];
     int dofadr = m->jnt_dofadr[m->dof_jntid[da]];
     int is_quat = type == mjJNT_BALL || (type == mjJNT_FREE && da >= dofadr + 3);
 
@@ -944,7 +944,7 @@ void mj_objectAcceleration(const mjModel* m, const mjData* d,
 void mj_local2Global(mjData* d, mjtNum xpos[3], mjtNum xmat[9],
                      const mjtNum pos[3], const mjtNum quat[4],
                      int body, mjtByte sameframe) {
-  mjtSameFrame sf = sameframe;
+  mjtSameFrame sf = (mjtSameFrame) sameframe;
 
   // position
   if (xpos && pos) {
