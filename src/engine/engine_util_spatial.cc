@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_util_spatial.h"
+#include "cc/vec.h"
 
 #include <math.h>
 
@@ -115,7 +116,7 @@ void mju_axisAngle2Quat(mjtNum res[4], const mjtNum axis[3], mjtNum angle) {
 
 // convert quaternion (corresponding to orientation difference) to 3D velocity
 void mju_quat2Vel(mjtNum res[3], const mjtNum quat[4], mjtNum dt) {
-  mjtNum axis[3] = {quat[1], quat[2], quat[3]};
+  Vec3<mjtNum> axis = {quat[1], quat[2], quat[3]};
   mjtNum sin_a_2 = mju_normalize3(axis);
   mjtNum speed = 2 * mju_atan2(sin_a_2, quat[0]);
 
@@ -245,7 +246,8 @@ void mju_quatIntegrate(mjtNum quat[4], const mjtNum vel[3], mjtNum scale) {
 
 // compute quaternion performing rotation from z-axis to given vector
 void mju_quatZ2Vec(mjtNum quat[4], const mjtNum vec[3]) {
-  mjtNum axis[3], a, vn[3] = {vec[0], vec[1], vec[2]}, z[3] = {0, 0, 1};
+  Vec3<mjtNum> axis, vn = {vec[0], vec[1], vec[2]}, z = {0, 0, 1};
+  mjtNum a;
 
   // set default result to no-rotation quaternion
   quat[0] = 1;
@@ -286,16 +288,16 @@ int mju_mat2Rot(mjtNum quat[4], const mjtNum mat[9]) {
   // 55-60. 2016.
 
   int iter;
-  mjtNum col1_mat[3] = {mat[0], mat[3], mat[6]};
-  mjtNum col2_mat[3] = {mat[1], mat[4], mat[7]};
-  mjtNum col3_mat[3] = {mat[2], mat[5], mat[8]};
+  Vec3<mjtNum> col1_mat = {mat[0], mat[3], mat[6]};
+  Vec3<mjtNum> col2_mat = {mat[1], mat[4], mat[7]};
+  Vec3<mjtNum> col3_mat = {mat[2], mat[5], mat[8]};
   for (iter = 0; iter < 500; iter++) {
     mjtNum rot[9];
     mju_quat2Mat(rot, quat);
-    mjtNum col1_rot[3] = {rot[0], rot[3], rot[6]};
-    mjtNum col2_rot[3] = {rot[1], rot[4], rot[7]};
-    mjtNum col3_rot[3] = {rot[2], rot[5], rot[8]};
-    mjtNum omega[3], vec1[3], vec2[3], vec3[3];
+    Vec3<mjtNum> col1_rot = {rot[0], rot[3], rot[6]};
+    Vec3<mjtNum> col2_rot = {rot[1], rot[4], rot[7]};
+    Vec3<mjtNum> col3_rot = {rot[2], rot[5], rot[8]};
+    Vec3<mjtNum> omega, vec1, vec2, vec3;
     mji_cross(vec1, col1_rot, col1_mat);
     mji_cross(vec2, col2_rot, col2_mat);
     mji_cross(vec3, col3_rot, col3_mat);
@@ -478,7 +480,8 @@ void mju_mulDofVec(mjtNum* res, const mjtNum* dof, const mjtNum* vec, int n) {
 void mju_transformSpatial(mjtNum res[6], const mjtNum vec[6], int flg_force,
                           const mjtNum newpos[3], const mjtNum oldpos[3],
                           const mjtNum rotnew2old[9]) {
-  mjtNum cros[3], dif[3], tran[6];
+  Vec3<mjtNum> cros, dif;
+  mjtNum tran[6];
 
   // apply translation
   mju_copy(tran, vec, 6);
@@ -506,7 +509,7 @@ void mju_transformSpatial(mjtNum res[6], const mjtNum vec[6], int flg_force,
 
 // make 3D frame given x-axis (normal) and possibly y-axis (tangent 1)
 void mju_makeFrame(mjtNum frame[9]) {
-  mjtNum tmp[3];
+  Vec3<mjtNum> tmp;
 
   // normalize xaxis
   if (mju_normalize3(frame) < 0.5) {

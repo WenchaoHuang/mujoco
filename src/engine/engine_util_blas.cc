@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_util_blas.h"
+#include "cc/vec.h"
 
 #include <string.h>
 
@@ -144,7 +145,7 @@ mjtNum mju_dot3(const mjtNum vec1[3], const mjtNum vec2[3]) {
 
 // Cartesian distance between 3D vectors
 mjtNum mju_dist3(const mjtNum pos1[3], const mjtNum pos2[3]) {
-  mjtNum dif[3] = {pos1[0]-pos2[0], pos1[1]-pos2[1], pos1[2]-pos2[2]};
+  Vec3<mjtNum> dif = {pos1[0]-pos2[0], pos1[1]-pos2[1], pos1[2]-pos2[2]};
   return mju_sqrt(dif[0]*dif[0] + dif[1]*dif[1] + dif[2]*dif[2]);
 }
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_forward.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -1516,8 +1517,8 @@ static int midpointNewton(const mjtNum inertia[3], const mjtNum w[3],
                           const mjtNum tau[3], mjtNum h, mjtNum w_mid[3]) {
   // precompute constants
   mjtNum i2h = 2.0 / h;
-  mjtNum dI[3] = {inertia[2]-inertia[1], inertia[0]-inertia[2], inertia[1]-inertia[0]};
-  mjtNum i2h_I[3] = {i2h*inertia[0], i2h*inertia[1], i2h*inertia[2]};
+  Vec3<mjtNum> dI = {inertia[2]-inertia[1], inertia[0]-inertia[2], inertia[1]-inertia[0]};
+  Vec3<mjtNum> i2h_I = {i2h*inertia[0], i2h*inertia[1], i2h*inertia[2]};
 
   // initialize solution to previous angular velocity
   mji_copy3(w_mid, w);
@@ -1526,12 +1527,12 @@ static int midpointNewton(const mjtNum inertia[3], const mjtNum w[3],
   int niter;
   for (niter=0; niter < 100; niter++) {
     // compute Coriolis term
-    mjtNum Iw[3] = {inertia[0]*w_mid[0], inertia[1]*w_mid[1], inertia[2]*w_mid[2]};
-    mjtNum coriolis[3];
+    Vec3<mjtNum> Iw = {inertia[0]*w_mid[0], inertia[1]*w_mid[1], inertia[2]*w_mid[2]};
+    Vec3<mjtNum> coriolis;
     mji_cross(coriolis, w_mid, Iw);
 
     // residual: f = i2h*I*(w_mid - w) + w_mid x (I*w_mid) - tau
-    mjtNum f[3];
+    Vec3<mjtNum> f;
     for (int k=0; k < 3; k++) {
       f[k] = i2h_I[k]*(w_mid[k] - w[k]) + coriolis[k] - tau[k];
     }
@@ -1552,24 +1553,24 @@ static int midpointNewton(const mjtNum inertia[3], const mjtNum w[3],
     J[6] = w_mid[1]*dI[2];  J[7] = w_mid[0]*dI[2];  J[8] = i2h_I[2];
 
     // solve J*delta = -f for search direction delta
-    mjtNum neg_f[3] = {-f[0], -f[1], -f[2]};
-    mjtNum delta[3];
+    Vec3<mjtNum> neg_f = {-f[0], -f[1], -f[2]};
+    Vec3<mjtNum> delta;
     mju_solve3(delta, J, neg_f);
 
     // backtracking line search
     mjtNum step = 1.0;
     for (int ls=0; ls < 20; ls++) {
       // candidate step
-      mjtNum w_try[3], Iw_try[3];
+      Vec3<mjtNum> w_try, Iw_try;
       for (int k=0; k < 3; k++) {
         w_try[k] = w_mid[k] + step*delta[k];
         Iw_try[k] = inertia[k]*w_try[k];
       }
-      mjtNum coriolis_try[3];
+      Vec3<mjtNum> coriolis_try;
       mji_cross(coriolis_try, w_try, Iw_try);
 
       // residual at candidate step
-      mjtNum f_try[3];
+      Vec3<mjtNum> f_try;
       for (int k=0; k < 3; k++) {
         f_try[k] = i2h_I[k]*(w_try[k] - w[k]) + coriolis_try[k] - tau[k];
       }
@@ -1612,7 +1613,8 @@ int mj_midpoint(mjtNum mass, const mjtNum inertia[3], const mjtNum ipos[3],
                 const mjtNum qfrc[6], const mjtNum gravity[3], mjtNum h,
                 mjtNum qvel_new[6]) {
   // transform angular velocity and torque to inertial frame
-  mjtNum iquat_neg[4], w[3], tau[3];
+  Vec3<mjtNum> w, tau;
+  mjtNum iquat_neg[4];
   mji_negQuat(iquat_neg, iquat);
   mji_rotVecQuat(w, qvel_old+3, iquat_neg);  // qvel+3 (angular) is in body frame
   mji_rotVecQuat(tau, qfrc+3, iquat_neg);    // qfrc+3 (angular) is in body frame
@@ -1620,10 +1622,10 @@ int mj_midpoint(mjtNum mass, const mjtNum inertia[3], const mjtNum ipos[3],
   // check for translational-rotational coupling
   int aligned = (ipos[0] == 0 && ipos[1] == 0 && ipos[2] == 0);
 
-  mjtNum r_com[3];    // joint-to-CoM vector in inertial frame
-  mjtNum tau_com[3];  // torque at CoM in inertial frame
+  Vec3<mjtNum> r_com;    // joint-to-CoM vector in inertial frame
+  Vec3<mjtNum> tau_com;  // torque at CoM in inertial frame
   mjtNum rot_x2i[4];  // quaternion rotation from world to inertial frame
-  mjtNum force[3];    // external force in inertial frame
+  Vec3<mjtNum> force;    // external force in inertial frame
 
   // compute torque at CoM in inertial frame
   if (aligned) {
@@ -1639,17 +1641,17 @@ int mj_midpoint(mjtNum mass, const mjtNum inertia[3], const mjtNum ipos[3],
     mji_rotVecQuat(r_com, ipos, iquat_neg);
 
     // torque at CoM in inertial frame
-    mjtNum rxf[3];
+    Vec3<mjtNum> rxf;
     mji_cross(rxf, r_com, force);
     mji_sub3(tau_com, tau, rxf);
   }
 
   // solve for midpoint angular velocity
-  mjtNum w_mid[3];
+  Vec3<mjtNum> w_mid;
   int niter = midpointNewton(inertia, w, tau_com, h, w_mid);
 
   // next and mid angular velocities in inertial frame, rotate both to body frame
-  mjtNum w_new[3], w_new_body[3], w_mid_body[3];
+  Vec3<mjtNum> w_new, w_new_body, w_mid_body;
   for (int k=0; k < 3; k++) {
     w_new[k] = 2.0*w_mid[k] - w[k];
   }
@@ -1665,25 +1667,25 @@ int mj_midpoint(mjtNum mass, const mjtNum inertia[3], const mjtNum ipos[3],
   // === non-aligned: solve for translational velocity
 
   // rotate linear velocity to inertial frame
-  mjtNum v[3];
+  Vec3<mjtNum> v;
   mji_rotVecQuat(v, qvel_old, rot_x2i);
 
   // current CoM velocities (rot, lin) in inertial frame
-  mjtNum wxr[3];
+  Vec3<mjtNum> wxr;
   mji_cross(wxr, w, r_com);
-  mjtNum vcom[3];
+  Vec3<mjtNum> vcom;
   mji_add3(vcom, v, wxr);
 
   // right-hand side for midpoint CoM velocity
   mjtNum i2h = 2.0 / h;
-  mjtNum b[3];
+  Vec3<mjtNum> b;
   for (int k=0; k < 3; k++) {
     b[k] = force[k]/mass + i2h*vcom[k];
   }
 
   // add gravity, if any
   if (gravity) {
-    mjtNum g_inertial[3];
+    Vec3<mjtNum> g_inertial;
     mji_rotVecQuat(g_inertial, gravity, rot_x2i);
     mji_addTo3(b, g_inertial);
   }
@@ -1692,24 +1694,24 @@ int mj_midpoint(mjtNum mass, const mjtNum inertia[3], const mjtNum ipos[3],
   mjtNum wnorm2 = mju_dot3(w_mid, w_mid);
   mjtNum denom = i2h*i2h + wnorm2;
   mjtNum w_dot_b = mju_dot3(w_mid, b);
-  mjtNum w_cross_b[3];
+  Vec3<mjtNum> w_cross_b;
   mji_cross(w_cross_b, w_mid, b);
-  mjtNum vcom_mid[3];
+  Vec3<mjtNum> vcom_mid;
   for (int k=0; k < 3; k++) {
     vcom_mid[k] = (i2h*b[k] + (w_dot_b/i2h)*w_mid[k] - w_cross_b[k]) / denom;
   }
 
   // recover midpoint and new joint velocity in inertial frame
-  mjtNum wxr_mid[3];
+  Vec3<mjtNum> wxr_mid;
   mji_cross(wxr_mid, w_mid, r_com);
-  mjtNum v_mid[3], v_new[3];
+  Vec3<mjtNum> v_mid, v_new;
   for (int k=0; k < 3; k++) {
     v_mid[k] = vcom_mid[k] - wxr_mid[k];
     v_new[k] = 2.0*v_mid[k] - v[k];
   }
 
   // estimate new orientation
-  mjtNum axis[3];
+  Vec3<mjtNum> axis;
   mji_copy3(axis, w_mid_body);
   mjtNum wnorm = mju_normalize3(axis);
   mjtNum qrot_new[4];
@@ -1718,7 +1720,7 @@ int mj_midpoint(mjtNum mass, const mjtNum inertia[3], const mjtNum ipos[3],
   mji_mulQuat(xquat_new, xquat, qrot_new);
 
   // v_new (linear): inertial → body → world using new orientation
-  mjtNum v_body[3];
+  Vec3<mjtNum> v_body;
   mji_rotVecQuat(v_body, v_new, iquat);
   mji_rotVecQuat(qvel_new, v_body, xquat_new);
 

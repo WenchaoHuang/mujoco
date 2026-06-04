@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_core_constraint.h"
+#include "cc/vec.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -272,7 +273,7 @@ static int mj_vertBodyWeight(const mjModel* m, const mjData* d, int f, int* v,
   mjtNum sign = vweight[0] < 0 ? -1 : 1;
 
   // compute parametric coordinates using absolute weights
-  mjtNum coord[3] = {0, 0, 0};
+  Vec3<mjtNum> coord = {0, 0, 0};
   for (int i = 0; i < nw; i++) {
     mju_addToScl3(coord, m->flex_vert0 + 3*v[i], mju_abs(vweight[i]));
   }
@@ -290,7 +291,7 @@ static int mj_vertBodyWeight(const mjModel* m, const mjData* d, int f, int* v,
   }
 
   // cell lookup: get local coords and node indices
-  mjtNum local[3];
+  Vec3<mjtNum> local;
   int nodeindices[27];  // max npc for quadratic: 3^3 = 27
   mju_cellLookup(coord, m->flex_cellnum+3*f, order, local, nodeindices);
 
@@ -599,7 +600,8 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
   int flex_edgeadr, flex_edgenum;
   int flex_vertadr, flex_vertnum;
   mjtNum cpos[6], pos[2][3], ref[2], dif, deriv;
-  mjtNum quat[4], quat1[4], quat2[4], quat3[4], axis[3];
+  Vec3<mjtNum> axis;
+  mjtNum quat[4], quat1[4], quat2[4], quat3[4];
   mjtNum *jac[2], *jacdif, *data;
 
   // disabled or no equality constraints: return
@@ -893,7 +895,7 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
         mjtNum p[2] = {.5, .5};
         mju_flexInterpRotation2D(order, xpos_e, npe, na0, na1, normal_axis, p, elem_quat);
       } else {
-        mjtNum center[3] = {0.5, 0.5, 0.5};
+        Vec3<mjtNum> center = {0.5, 0.5, 0.5};
         mjtNum mat[9];
         mju_defGradient(mat, center, xpos_e, order);
         mju_mat2Rot(elem_quat, mat);
@@ -932,7 +934,7 @@ void mj_instantiateEquality(const mjModel* m, mjData* d) {
       mjtNum* displ_e = mjSTACKALLOC(d, ndof_elem, mjtNum);
       for (int n = 0; n < npe; n++) {
         // rotate xpos_e to corotational frame
-        mjtNum xrot[3];
+        Vec3<mjtNum> xrot;
         mju_rotVecQuat(xrot, xpos_e + 3*n, elem_quat);
         displ_e[3*n + 0] = xrot[0] - refpos_e[3*n + 0];
         displ_e[3*n + 1] = xrot[1] - refpos_e[3*n + 1];
@@ -1100,13 +1102,13 @@ void mj_Jdotv(const mjModel* m, mjData* d, mjtNum* result) {
       // compute global anchor points and body ids
       int obj1 = m->eq_obj1id[eq_id];
       int obj2 = m->eq_obj2id[eq_id];
-      mjtNum pos1[3], pos2[3];
+      Vec3<mjtNum> pos1, pos2;
       int body1, body2;
       mj_equalityAnchors(m, d, eq_id, pos1, pos2, &body1, &body2);
 
       // compute jacDot*v for each body point
-      mjtNum jdv1[3], jdv2[3];
-      mjtNum jrdv1[3] = {0}, jrdv2[3] = {0};
+      Vec3<mjtNum> jdv1, jdv2;
+      Vec3<mjtNum> jrdv1 = {0}, jrdv2 = {0};
       if (issparse) {
         // get merged chain for the two bodies
         int NV = mj_mergeChain(m, chain, body1, body2, /*flg_skipcommon=*/0);
@@ -1183,7 +1185,7 @@ void mj_Jdotv(const mjModel* m, mjData* d, mjtNum* result) {
         const mjtNum* omega2 = d->cvel+6*body2;
 
         // relative angular velocity: domega = omega1 - omega2
-        mjtNum domega[3];
+        Vec3<mjtNum> domega;
         mju_sub3(domega, omega1, omega2);
 
         // quaternion derivatives: qdot = 0.5 * q * (0, omega)
@@ -1219,7 +1221,7 @@ void mj_Jdotv(const mjModel* m, mjData* d, mjtNum* result) {
         // three terms from product rule:
 
         // djrdv = Jrdot0*v - Jrdot1*v (rotational jacDot difference * v)
-        mjtNum djrdv[3];
+        Vec3<mjtNum> djrdv;
         mju_sub3(djrdv, jrdv1, jrdv2);
 
         // term1: neg(qdot1) * domega * q0r
@@ -1363,7 +1365,8 @@ static int mj_instantiateFriction(const mjModel* m, mjData* d, int count_only, i
 static int mj_instantiateLimit(const mjModel* m, mjData* d, int count_only, int* nnz) {
   int nv = m->nv, issparse = mj_isSparse(m);
   int nl = 0;
-  mjtNum margin, value, dist, angleAxis[3];
+  Vec3<mjtNum> angleAxis;
+  mjtNum margin, value, dist;
   mjtNum *jac = NULL;
 
   // disabled: return

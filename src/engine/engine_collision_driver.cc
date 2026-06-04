@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_collision_driver.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -198,8 +199,8 @@ static inline size_t alignArena(mjData* d, size_t alignment) {
 // plane to geom_center squared distance, g1 is a plane
 static mjtNum planeGeomDist(const mjModel* m, mjData* d, int g1, int g2) {
   mjtNum* mat1 = d->geom_xmat + 9*g1;
-  mjtNum norm[3] = {mat1[2], mat1[5], mat1[8]};
-  mjtNum dif[3];
+  Vec3<mjtNum> norm = {mat1[2], mat1[5], mat1[8]};
+  Vec3<mjtNum> dif;
 
   mju_sub3(dif, d->geom_xpos + 3*g2, d->geom_xpos + 3*g1);
   return mju_dot3(dif, norm);
@@ -256,7 +257,7 @@ static int filterSphereBox(const mjtNum s[3], mjtNum bound, const mjtNum aabb[6]
 
 // filter contact based on bounding sphere test (raw)
 static int filterSphere(const mjtNum pos1[3], const mjtNum pos2[3], mjtNum bound) {
-  mjtNum dif[3] = {pos1[0]-pos2[0], pos1[1]-pos2[1], pos1[2]-pos2[2]};
+  Vec3<mjtNum> dif = {pos1[0]-pos2[0], pos1[1]-pos2[1], pos1[2]-pos2[2]};
   mjtNum distsqr = dif[0]*dif[0] + dif[1]*dif[1] + dif[2]*dif[2];
 
   return (distsqr > bound*bound);
@@ -1214,7 +1215,7 @@ static void makeAAMM(const mjModel* m, mjData* d,
       const mjtNum* xmat = d->geom_xmat + 9*geom;
 
       // compute center in global coordinates
-      mjtNum pos[3];
+      Vec3<mjtNum> pos;
       mji_mulMatVec3(pos, xmat, aabb);
       mju_addTo3(pos, xpos);
 
@@ -1253,7 +1254,7 @@ static void makeAAMM(const mjModel* m, mjData* d,
 
     // process flex vertices
     for (int i=0; i < flex_vertnum; i++) {
-      mjtNum v[3];
+      Vec3<mjtNum> v;
 
       // compute vertex coordinates in given frame
       mju_mulMatVec(v, frame, vbase+3*i, 3, 3);
@@ -1476,7 +1477,7 @@ static int mj_SAP(mjData* d, const mjtNum* aamm, int n, int axis_x, int* pair, i
 
 // add vector to covariance
 static void updateCov(mjtNum cov[9], const mjtNum vec[3], const mjtNum cen[3]) {
-  mjtNum dif[3] = {vec[0]-cen[0], vec[1]-cen[1], vec[2]-cen[2]};
+  Vec3<mjtNum> dif = {vec[0]-cen[0], vec[1]-cen[1], vec[2]-cen[2]};
   mjtNum D00 = dif[0]*dif[0];
   mjtNum D01 = dif[0]*dif[1];
   mjtNum D02 = dif[0]*dif[2];
@@ -1516,7 +1517,8 @@ int mj_broadphase(const mjModel* m, mjData* d, int* bfpair, int maxpair) {
   int nvert = m->nflexvert, nflex = m->nflex, nbodyflex = m->nbody + m->nflex;
   int dsbl_filterparent = mjDISABLED(mjDSBL_FILTERPARENT);
   int sleep_filter = mjENABLED(mjENBL_SLEEP) && d->nbody_awake < nbody;
-  mjtNum cov[9], cen[3], eigval[3], frame[9], quat[4];
+  Vec3<mjtNum> cen, eigval;
+  mjtNum cov[9], frame[9], quat[4];
 
   // init with pairs involving always-colliding bodies
   for (int b1=0; b1 < nbody; b1++) {
@@ -1675,7 +1677,7 @@ int mj_broadphase(const mjModel* m, mjData* d, int* bfpair, int maxpair) {
 static void mj_contactParam(const mjModel* m, int* condim,
                             mjtNum* solref, mjtNum* solimp, mjtNum* friction,
                             int g1, int g2, int f1, int f2) {
-  mjtNum fri[3];
+  Vec3<mjtNum> fri;
 
   // get parameters from geom1 or flex1
   int priority1 =           (f1 < 0) ? m->geom_priority[g1]     : m->flex_priority[f1];
@@ -1801,7 +1803,7 @@ static void mj_makeCapsule(const mjModel* m, mjData* d, int f, const int vid[2],
   mjtNum* v2 = d->flexvert_xpos + 3*(m->flex_vertadr[f] + vid[1]);
 
   // construct capsule from vertices
-  mjtNum dif[3] = {v1[0]-v2[0], v1[1]-v2[1], v1[2]-v2[2]};
+  Vec3<mjtNum> dif = {v1[0]-v2[0], v1[1]-v2[1], v1[2]-v2[2]};
   size[0] = m->flex_radius[f];
   size[1] = 0.5*mju_normalize3(dif);
 
@@ -1997,7 +1999,7 @@ void mj_collidePlaneFlex(const mjModel* m, mjData* d, int g, int f) {
   mjtNum radius = m->flex_radius[f];
   mjtNum* pos = d->geom_xpos + 3*g;
   mjtNum* mat = d->geom_xmat + 9*g;
-  mjtNum nrm[3] = {mat[2], mat[5], mat[8]};
+  Vec3<mjtNum> nrm = {mat[2], mat[5], mat[8]};
 
   // prepare contact parameters (same for all vertices)
   mjtNum margin = mj_assignMargin(m, m->geom_margin[g] + m->flex_margin[f]);
@@ -2013,7 +2015,7 @@ void mj_collidePlaneFlex(const mjModel* m, mjData* d, int g, int f) {
     mjtNum* v = d->flexvert_xpos + 3*(m->flex_vertadr[f]+i);
 
     // distance from plane to vertex
-    mjtNum dif[3] = {v[0]-pos[0], v[1]-pos[1], v[2]-pos[2]};
+    Vec3<mjtNum> dif = {v[0]-pos[0], v[1]-pos[1], v[2]-pos[2]};
     mjtNum dist = mju_dot3(dif, nrm);
 
     // no contact
@@ -2101,13 +2103,13 @@ void mj_collideSdfFlex(const mjModel* m, mjData* d, int g, int f) {
 static int planeVertex(mjContact* con, const mjtNum* pos, mjtNum rad,
                        int t0, int t1, int t2, int v) {
   // make t0 the origin
-  mjtNum e1[3], e2[3], ev[3];
+  Vec3<mjtNum> e1, e2, ev;
   mju_sub3(e1, pos+3*t1, pos+3*t0);
   mju_sub3(e2, pos+3*t2, pos+3*t0);
   mju_sub3(ev, pos+3*v,  pos+3*t0);
 
   // compute normal
-  mjtNum nrm[3];
+  Vec3<mjtNum> nrm;
   mju_cross(nrm, e1, e2);
   mju_normalize3(nrm);
 
@@ -2286,7 +2288,8 @@ void mj_collideGeomElem(const mjModel* m, mjData* d, int g, int f, int e) {
   // sphere/capsule/box : capsule
   if (dim == 1 && (type == mjGEOM_SPHERE || type == mjGEOM_CAPSULE || type == mjGEOM_BOX)) {
     // make capsule from vertices
-    mjtNum pos[3], mat[9], size[2];
+    Vec3<mjtNum> pos;
+    mjtNum mat[9], size[2];
     mj_makeCapsule(m, d, f, m->flex_elem + m->flex_elemdataadr[f] + e*2,
                    pos, mat, size);
 
@@ -2439,8 +2442,10 @@ void mj_collideElems(const mjModel* m, mjData* d, int f1, int e1, int f2, int e2
   // capsule : capsule
   if (dim1 == 1 && dim2 == 1) {
     // make capsules from vertices
-    mjtNum pos1[3], mat1[9], size1[2];
-    mjtNum pos2[3], mat2[9], size2[2];
+    Vec3<mjtNum> pos1;
+    mjtNum mat1[9], size1[2];
+    Vec3<mjtNum> pos2;
+    mjtNum mat2[9], size2[2];
     mj_makeCapsule(m, d, f1, m->flex_elem + m->flex_elemdataadr[f1] + e1*2,
                    pos1, mat1, size1);
     mj_makeCapsule(m, d, f2, m->flex_elem + m->flex_elemdataadr[f2] + e2*2,
@@ -2527,7 +2532,8 @@ void mj_collideElemVert(const mjModel* m, mjData* d, int f, int e, int v) {
 
   // sphere : capsule
   if (dim == 1) {
-    mjtNum pos[3], mat[9], size[2];
+    Vec3<mjtNum> pos;
+    mjtNum mat[9], size[2];
     mjtNum I[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
     mj_makeCapsule(m, d, f, edata, pos, mat, size);
     mjPreContact precon;

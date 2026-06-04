@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_collision_gjk.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -57,7 +58,7 @@ static inline void lincomb(mjtNum res[3], const mjtNum* coef, int n, const mjtNu
 typedef struct {
   int verts;         // indices of the three vertices of the face in the polytope
   int adj[3];        // adjacent faces, one for each edge: [v1,v2], [v2,v3], [v3,v1]
-  mjtNum v[3];       // projection of the origin on face, can be used as face normal
+  Vec3<mjtNum> v;       // projection of the origin on face, can be used as face normal
   mjtNum dist2;      // squared norm of v; negative if deleted
   int index;         // index in map; -1: not in map, -2: deleted from polytope
 } Face;
@@ -188,7 +189,7 @@ static void gjk(mjCCDStatus* status, mjCCDObj* obj1, mjCCDObj* obj2) {
   int kmax = status->max_iterations;       // max number of iterations
   mjtNum* x1_k = status->x1;               // the kth approximation point for obj1
   mjtNum* x2_k = status->x2;               // the kth approximation point for obj2
-  mjtNum x_k[3];                           // the kth approximation point in Minkowski difference
+  Vec3<mjtNum> x_k;                           // the kth approximation point in Minkowski difference
   mjtNum lambda[4] = {1, 0, 0, 0};         // barycentric coordinates for x_k
   mjtNum cutoff2 = status->dist_cutoff * status->dist_cutoff;
   mjtNum tol2 = status->tolerance * status->tolerance;
@@ -216,7 +217,7 @@ static void gjk(mjCCDStatus* status, mjCCDObj* obj1, mjCCDObj* obj2) {
 
     // stopping criteria using the Frank-Wolfe duality gap given by
     //  |f(x_k) - f(x_min)|^2 <= < grad f(x_k), (x_k - s_k) >
-    mjtNum diff[3];
+    Vec3<mjtNum> diff;
     sub3(diff, x_k, s_k);
     if (dot3(x_k, diff) < epsilon) {
       if (!k) n = 1;
@@ -280,7 +281,7 @@ static void gjk(mjCCDStatus* status, mjCCDObj* obj1, mjCCDObj* obj2) {
     }
 
     // get the next iteration of x_k
-    mjtNum x_next[3];
+    Vec3<mjtNum> x_next;
     lincomb(x_next, lambda, n, simplex[0].vert, simplex[1].vert,
             simplex[2].vert, simplex[3].vert);
 
@@ -345,7 +346,7 @@ static inline void support(Vertex* v, mjCCDObj* obj1, mjCCDObj* obj2,
 // compute the support points in obj1 and obj2 for the kth approximation point
 static inline void gjkSupport(Vertex* v, mjCCDObj* obj1, mjCCDObj* obj2,
                               const mjtNum x_k[3], mjtNum x_norm) {
-  mjtNum dir[3], dir_neg[3];
+  Vec3<mjtNum> dir, dir_neg;
 
   // mjc_support requires a normalized direction
   scl3(dir_neg, x_k, 1 / x_norm);
@@ -357,7 +358,7 @@ static inline void gjkSupport(Vertex* v, mjCCDObj* obj1, mjCCDObj* obj2,
 // compute support points in Minkowski difference, return index of new vertex in polytope
 static int epaSupport(Polytope* pt, mjCCDObj* obj1, mjCCDObj* obj2,
                      const mjtNum d[3], mjtNum dnorm) {
-  mjtNum dir[3] = {1, 0, 0}, dir_neg[3] = {-1, 0, 0};
+  Vec3<mjtNum> dir = {1, 0, 0}, dir_neg = {-1, 0, 0};
 
   // mjc_support assumes a normalized direction
   if (dnorm > mjMINVAL) {
@@ -377,7 +378,7 @@ static int epaSupport(Polytope* pt, mjCCDObj* obj1, mjCCDObj* obj2,
 // compute the support point in the Minkowski difference for gjkIntersect (without normalization)
 static void gjkIntersectSupport(Vertex* v, mjCCDObj* obj1, mjCCDObj* obj2,
                                 const mjtNum dir[3]) {
-  mjtNum dir_neg[3] = {-dir[0], -dir[1], -dir[2]};
+  Vec3<mjtNum> dir_neg = {-dir[0], -dir[1], -dir[2]};
   support(v, obj1, obj2, dir, dir_neg);
 }
 
@@ -385,7 +386,7 @@ static void gjkIntersectSupport(Vertex* v, mjCCDObj* obj1, mjCCDObj* obj2,
 // compute the signed distance of a face along with the normal
 static inline mjtNum signedDistance(mjtNum normal[3], const Vertex* v1, const Vertex* v2,
                                     const Vertex* v3) {
-  mjtNum diff1[3], diff2[3];
+  Vec3<mjtNum> diff1, diff2;
   sub3(diff1, v3->vert, v1->vert);
   sub3(diff2, v2->vert, v1->vert);
   cross3(normal, diff1, diff2);
@@ -488,7 +489,8 @@ static inline void lincomb(mjtNum res[3], const mjtNum* coef, int n, const mjtNu
 // res = origin projected onto plane defined by v1, v2, v3
 static int projectOriginPlane(mjtNum res[3], const mjtNum v1[3], const mjtNum v2[3],
                               const mjtNum v3[3]) {
-  mjtNum diff21[3], diff31[3], diff32[3], n[3], nv, nn;
+  Vec3<mjtNum> diff21, diff31, diff32, n;
+  mjtNum nv, nn;
   sub3(diff21, v2, v1);
   sub3(diff31, v3, v1);
   sub3(diff32, v3, v2);
@@ -525,7 +527,7 @@ static int projectOriginPlane(mjtNum res[3], const mjtNum v1[3], const mjtNum v2
 // res = origin projected onto line defined by v1, v2
 static inline void projectOriginLine(mjtNum res[3], const mjtNum v1[3], const mjtNum v2[3]) {
   // res = v2 - <v2, v2 - v1> / <v2 - v1, v2 - v1> * (v2 - v1)
-  mjtNum diff[3];
+  Vec3<mjtNum> diff;
   sub3(diff, v2, v1);
   mjtNum scl = -(dot3(v2, diff) / dot3(diff, diff));
   res[0] = v2[0] + scl*diff[0];
@@ -607,7 +609,7 @@ static void S3D(mjtNum lambda[4], const mjtNum s1[3], const mjtNum s2[3],
   mjtNum dmin = mjMAX_LIMIT;
 
   if (!comp1) {
-    mjtNum lambda_2d[3], x[3];
+    Vec3<mjtNum> lambda_2d, x;
     S2D(lambda_2d, s2, s3, s4);
     lincomb(x, lambda_2d, 3, s2, s3, s4, NULL);
     mjtNum d = dot3(x, x);
@@ -619,7 +621,7 @@ static void S3D(mjtNum lambda[4], const mjtNum s1[3], const mjtNum s2[3],
   }
 
   if (!comp2) {
-    mjtNum lambda_2d[3], x[3];
+    Vec3<mjtNum> lambda_2d, x;
     S2D(lambda_2d, s1, s3, s4);
     lincomb(x, lambda_2d, 3, s1, s3, s4, NULL);
     mjtNum d = dot3(x, x);
@@ -633,7 +635,7 @@ static void S3D(mjtNum lambda[4], const mjtNum s1[3], const mjtNum s2[3],
   }
 
   if (!comp3) {
-    mjtNum lambda_2d[3], x[3];
+    Vec3<mjtNum> lambda_2d, x;
     S2D(lambda_2d, s1, s2, s4);
     lincomb(x, lambda_2d, 3, s1, s2, s4, NULL);
     mjtNum d = dot3(x, x);
@@ -647,7 +649,7 @@ static void S3D(mjtNum lambda[4], const mjtNum s1[3], const mjtNum s2[3],
   }
 
   if (!comp4) {
-    mjtNum lambda_2d[3], x[3];
+    Vec3<mjtNum> lambda_2d, x;
     S2D(lambda_2d, s1, s2, s3);
     lincomb(x, lambda_2d, 3, s1, s2, s3, NULL);
     mjtNum d = dot3(x, x);
@@ -662,7 +664,7 @@ static void S3D(mjtNum lambda[4], const mjtNum s1[3], const mjtNum s2[3],
 
 static void S2D(mjtNum lambda[3], const mjtNum s1[3], const mjtNum s2[3], const mjtNum s3[3]) {
   // project origin onto affine hull of the simplex
-  mjtNum p_o[3];
+  Vec3<mjtNum> p_o;
   if (projectOriginPlane(p_o, s1, s2, s3)) {
     S1D(lambda, s1, s2);
     lambda[2] = 0;
@@ -756,7 +758,8 @@ static void S2D(mjtNum lambda[3], const mjtNum s1[3], const mjtNum s2[3], const 
   mjtNum dmin = mjMAX_LIMIT;
 
   if (!comp1) {
-    mjtNum lambda_1d[2], x[3];
+    Vec3<mjtNum> x;
+    mjtNum lambda_1d[2];
     S1D(lambda_1d, s2, s3);
     lincomb(x, lambda_1d, 2, s2, s3, NULL, NULL);
     mjtNum d = dot3(x, x);
@@ -767,7 +770,8 @@ static void S2D(mjtNum lambda[3], const mjtNum s1[3], const mjtNum s2[3], const 
   }
 
   if (!comp2) {
-    mjtNum lambda_1d[2], x[3];
+    Vec3<mjtNum> x;
+    mjtNum lambda_1d[2];
     S1D(lambda_1d, s1, s3);
     lincomb(x, lambda_1d, 2, s1, s3, NULL, NULL);
     mjtNum d = dot3(x, x);
@@ -780,7 +784,8 @@ static void S2D(mjtNum lambda[3], const mjtNum s1[3], const mjtNum s2[3], const 
   }
 
   if (!comp3) {
-    mjtNum lambda_1d[2], x[3];
+    Vec3<mjtNum> x;
+    mjtNum lambda_1d[2];
     S1D(lambda_1d, s1, s2);
     lincomb(x, lambda_1d, 2, s1, s2, NULL, NULL);
     mjtNum d = dot3(x, x);
@@ -795,7 +800,7 @@ static void S2D(mjtNum lambda[3], const mjtNum s1[3], const mjtNum s2[3], const 
 
 static void S1D(mjtNum lambda[2], const mjtNum s1[3], const mjtNum s2[3]) {
   // find projection of origin onto the 1-simplex:
-  mjtNum p_o[3];
+  Vec3<mjtNum> p_o;
   projectOriginLine(p_o, s1, s2);
 
   // find the axis with the largest projection "shadow" of the simplex
@@ -845,7 +850,7 @@ static inline void replaceSimplex3(Polytope* pt, mjCCDStatus* status, int v1, in
 // return 1 if the origin and p3 are on the same side of the plane defined by p0, p1, p2
 static int sameSide(const mjtNum p0[3], const mjtNum p1[3],
                     const mjtNum p2[3], const mjtNum p3[3]) {
-    mjtNum diff1[3], diff2[3], diff3[3], diff4[3], n[3];
+    Vec3<mjtNum> diff1, diff2, diff3, diff4, n;
     sub3(diff1, p1, p0);
     sub3(diff2, p2, p0);
     cross3(n, diff1, diff2);
@@ -892,7 +897,7 @@ static void rotmat(mjtNum R[9], const mjtNum axis[3]) {
 // return nonzero if the ray v1v2 intersects the triangle v3v4v5
 static inline int rayTriangle(const mjtNum v1[3], const mjtNum v2[3], const mjtNum v3[3],
                               const mjtNum v4[3], const mjtNum v5[3]) {
-  mjtNum diff12[3], diff13[3], diff14[3], diff15[3];
+  Vec3<mjtNum> diff12, diff13, diff14, diff15;
   sub3(diff12, v2, v1);
   sub3(diff13, v3, v1);
   sub3(diff14, v4, v1);
@@ -912,7 +917,7 @@ static inline int rayTriangle(const mjtNum v1[3], const mjtNum v2[3], const mjtN
 static int polytope2(Polytope* pt, mjCCDStatus* status, mjCCDObj* obj1, mjCCDObj* obj2) {
   mjtNum *v1 = status->simplex[0].vert, *v2 = status->simplex[1].vert;
 
-  mjtNum diff[3];
+  Vec3<mjtNum> diff;
   sub3(diff, v2, v1);
 
   // find component with smallest magnitude (so cross product is largest)
@@ -926,9 +931,9 @@ static int polytope2(Polytope* pt, mjCCDStatus* status, mjCCDObj* obj1, mjCCDObj
   }
 
   // cross product with best coordinate axis
-  mjtNum e[3] = {0, 0, 0};
+  Vec3<mjtNum> e = {0, 0, 0};
   e[index] = 1;
-  mjtNum d1[3], d2[3], d3[3];
+  Vec3<mjtNum> d1, d2, d3;
   cross3(d1, e, diff);
 
   // rotate around the line segment to get three more points spaced 120 degrees apart
@@ -1039,12 +1044,12 @@ static void triAffineCoord(mjtNum lambda[3], const mjtNum v1[3], const mjtNum v2
 // return true if point p and triangle v1v2v3 intersect
 static int triPointIntersect(const mjtNum v1[3], const mjtNum v2[3], const mjtNum v3[3],
                              const mjtNum p[3]) {
-  mjtNum lambda[3];
+  Vec3<mjtNum> lambda;
   triAffineCoord(lambda, v1, v2, v3, p);
   if (lambda[0] < 0 || lambda[1] < 0 || lambda[2] < 0) {
     return 0;
   }
-  mjtNum pr[3], diff[3];
+  Vec3<mjtNum> pr, diff;
   pr[0] = v1[0]*lambda[0] + v2[0]*lambda[1] + v3[0]*lambda[2];
   pr[1] = v1[1]*lambda[0] + v2[1]*lambda[1] + v3[1]*lambda[2];
   pr[2] = v1[2]*lambda[0] + v2[2]*lambda[1] + v3[2]*lambda[2];
@@ -1061,7 +1066,7 @@ static int polytope3(Polytope* pt, mjCCDStatus* status, mjCCDObj* obj1, mjCCDObj
                *v3 = status->simplex[2].vert;
 
   // get normals in both directions
-  mjtNum diff1[3], diff2[3], n[3], n_neg[3];
+  Vec3<mjtNum> diff1, diff2, n, n_neg;
   sub3(diff1, v2, v1);
   sub3(diff2, v3, v1);
   cross3(n, diff1, diff2);
@@ -1289,7 +1294,7 @@ static void horizon(Polytope* pt, Face* face) {
 // recover witness points from EPA polytope, return signed distance between witness points
 static mjtNum epaWitness(const Polytope* pt, const Face* face, mjtNum x1[3], mjtNum x2[3]) {
   // compute affine coordinates for witness points on plane defined by face
-  mjtNum lambda[3];
+  Vec3<mjtNum> lambda;
   int verts[3] = EPA_VERT_EXPAND(face->verts);
   Vertex* v1 = pt->verts + verts[0];
   Vertex* v2 = pt->verts + verts[1];
@@ -1461,11 +1466,11 @@ static Face* epa(mjCCDStatus* status, Polytope* pt, mjCCDObj* obj1, mjCCDObj* ob
 // compute area of a quadrilateral
 static inline mjtNum area4(const mjtNum a[3], const mjtNum b[3],
                            const mjtNum c[3], const mjtNum d[3]) {
-  mjtNum ad[3] = {d[0] - a[0], d[1] - a[1], d[2] - a[2]};
-  mjtNum db[3] = {b[0] - d[0], b[1] - d[1], b[2] - d[2]};
-  mjtNum bc[3] = {c[0] - b[0], c[1] - b[1], c[2] - b[2]};
-  mjtNum ca[3] = {a[0] - c[0], a[1] - c[1], a[2] - c[2]};
-  mjtNum e[3], f[3], g[3];
+  Vec3<mjtNum> ad = {d[0] - a[0], d[1] - a[1], d[2] - a[2]};
+  Vec3<mjtNum> db = {b[0] - d[0], b[1] - d[1], b[2] - d[2]};
+  Vec3<mjtNum> bc = {c[0] - b[0], c[1] - b[1], c[2] - b[2]};
+  Vec3<mjtNum> ca = {a[0] - c[0], a[1] - c[1], a[2] - c[2]};
+  Vec3<mjtNum> e, f, g;
   cross3(e, ad, db);
   cross3(f, bc, ca);
   add3(g, e, f);
@@ -1533,7 +1538,7 @@ static inline void polygonQuad(mjtNum* res[4], mjtNum* polygon, int nvert) {
 // face edge (v1, v2)
 static mjtNum planeNormal(mjtNum res[3], const mjtNum v1[3], const mjtNum v2[3],
                           const mjtNum n[3]) {
-  mjtNum v3[3], diff1[3], diff2[3];
+  Vec3<mjtNum> v3, diff1, diff2;
   add3(v3, v1, n);
   sub3(diff1, v2, v1);
   sub3(diff2, v3, v1);
@@ -1547,7 +1552,7 @@ static mjtNum planeNormal(mjtNum res[3], const mjtNum v1[3], const mjtNum v2[3],
 
 // find what side of a plane a point p lies
 static int halfspace(const mjtNum a[3], const mjtNum n[3], const mjtNum p[3]) {
-  mjtNum diff[3] = {p[0] - a[0], p[1] - a[1], p[2] - a[2]};
+  Vec3<mjtNum> diff = {p[0] - a[0], p[1] - a[1], p[2] - a[2]};
   return dot3(diff, n) > -mjMINVAL;
 }
 
@@ -1555,7 +1560,7 @@ static int halfspace(const mjtNum a[3], const mjtNum n[3], const mjtNum p[3]) {
 // compute the intersection of a plane with a line segment (a, b)
 static mjtNum planeIntersect(mjtNum res[3], const mjtNum pn[3], mjtNum pd,
                              const mjtNum a[3], const mjtNum b[3]) {
-  mjtNum ab[3];
+  Vec3<mjtNum> ab;
   sub3(ab, b, a);
   mjtNum temp = dot3(pn, ab);
   if (temp == 0.0) return mjMAX_LIMIT;  // parallel; no intersection
@@ -1833,7 +1838,7 @@ static int boxNormals2(mjtNum res[9], int resind[3], const mjtNum mat[9], const 
                         0, 0, 1,     0,  0, -1};
 
   // get local coordinates of the normal
-  mjtNum local_n[3];
+  Vec3<mjtNum> local_n;
   local_n[0] = mat[0]*n[0] + mat[3]*n[1] + mat[6]*n[2];
   local_n[1] = mat[1]*n[0] + mat[4]*n[1] + mat[7]*n[2];
   local_n[2] = mat[2]*n[0] + mat[5]*n[1] + mat[8]*n[2];
@@ -2095,7 +2100,7 @@ static void multicontact(Polytope* pt, Face* face, mjCCDStatus* status,
   mjtNum n1[3 * mjMAX_POLYVERT], n2[3 * mjMAX_POLYVERT];  // normals of possible face collisions
   int idx1[mjMAX_POLYVERT], idx2[mjMAX_POLYVERT];         // indices of faces
 
-  mjtNum dir[3], dir_neg[3];
+  Vec3<mjtNum> dir, dir_neg;
   sub3(dir, status->x2, status->x1);
   sub3(dir_neg, status->x1, status->x2);
 
@@ -2173,7 +2178,7 @@ static void multicontact(Polytope* pt, Face* face, mjCCDStatus* status,
   // TODO(kylebayes): this approximates the contact direction, by scaling the face normal by the
   // single contact direction's magnitude. This is effective, but polygonClip should compute
   // this for each contact point.
-  mjtNum approx_dir[3];
+  Vec3<mjtNum> approx_dir;
 
   // face1 is an edge; clip face1 against face2
   if (edgecon1) {
@@ -2182,7 +2187,7 @@ static void multicontact(Polytope* pt, Face* face, mjCCDStatus* status,
     // x1 and x2 must be flipped as we flipped the faces in polygonClip
     int nx = status->nx;
     for (int k = 0; k < nx; k++) {
-      mjtNum tmp[3];
+      Vec3<mjtNum> tmp;
       copy3(tmp, status->x1 + 3*k);
       copy3(status->x1 + 3*k, status->x2 + 3*k);
       copy3(status->x2 + 3*k, tmp);
@@ -2206,7 +2211,7 @@ static void multicontact(Polytope* pt, Face* face, mjCCDStatus* status,
 
 // inflate a contact by margin
 static inline void inflate(mjCCDStatus* status, mjtNum margin1, mjtNum margin2) {
-  mjtNum n[3];
+  Vec3<mjtNum> n;
   sub3(n, status->x2, status->x1);
   mju_normalize3(n);
   if (margin1) {

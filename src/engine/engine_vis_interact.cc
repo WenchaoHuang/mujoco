@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_vis_interact.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 
@@ -32,7 +33,8 @@
 // transform pose from room to model space
 void mjv_room2model(mjtNum* modelpos, mjtNum* modelquat, const mjtNum* roompos,
                     const mjtNum* roomquat, const mjvScene* scn) {
-  mjtNum translate[3], rotate[4], invpos[3], invquat[4];
+  Vec3<mjtNum> translate, invpos;
+  mjtNum rotate[4], invquat[4];
 
   // check scale
   if (scn->scale < mjMINVAL) {
@@ -66,7 +68,8 @@ void mjv_room2model(mjtNum* modelpos, mjtNum* modelquat, const mjtNum* roompos,
 // transform pose from model to room space
 void mjv_model2room(mjtNum* roompos, mjtNum* roomquat, const mjtNum* modelpos,
                     const mjtNum* modelquat, const mjvScene* scn) {
-  mjtNum translate[3], rotate[4];
+  Vec3<mjtNum> translate;
+  mjtNum rotate[4];
 
   // check scale
   if (scn->scale < mjMINVAL) {
@@ -96,8 +99,10 @@ void mjv_model2room(mjtNum* roompos, mjtNum* roomquat, const mjtNum* modelpos,
 
 // get camera info in model space: average left and right OpenGL cameras
 void mjv_cameraInModel(mjtNum* headpos, mjtNum* forward, mjtNum* up, const mjvScene* scn) {
-  mjtNum pos[3], fwd[3], u[3], quat[4];
-  mjtNum modelpos[3], modelquat[4], modelmat[9];
+  Vec3<mjtNum> pos, fwd, u;
+  mjtNum quat[4];
+  Vec3<mjtNum> modelpos;
+  mjtNum modelquat[4], modelmat[9];
 
   // check znear
   if (scn->camera[0].frustum_near < mjMINVAL || scn->camera[1].frustum_near < mjMINVAL) {
@@ -127,7 +132,7 @@ void mjv_cameraInModel(mjtNum* headpos, mjtNum* forward, mjtNum* up, const mjvSc
     mju_normalize3(u);
 
     // make orientation matrix: x = left, y = up, z = forward
-    mjtNum left[3];
+    Vec3<mjtNum> left;
     mju_cross(left, u, fwd);
     mju_normalize3(left);
     mjtNum mat[9] = {
@@ -169,7 +174,7 @@ void mjv_cameraInModel(mjtNum* headpos, mjtNum* forward, mjtNum* up, const mjvSc
 
 // get camera info in room space: average left and right OpenGL cameras
 void mjv_cameraInRoom(mjtNum* headpos, mjtNum* forward, mjtNum* up, const mjvScene* scn) {
-  mjtNum pos[3], fwd[3], u[3];
+  Vec3<mjtNum> pos, fwd, u;
 
   // check znear
   if (scn->camera[0].frustum_near < mjMINVAL || scn->camera[1].frustum_near < mjMINVAL) {
@@ -268,7 +273,7 @@ void mjv_alignToCamera(mjtNum* res, const mjtNum* vec, const mjtNum* forward) {
 
 // convert 2D mouse motion to z-aligned 3D world coordinates
 static void convert2D(mjtNum* res, int action, mjtNum dx, mjtNum dy, const mjtNum* forward) {
-  mjtNum vec[3];
+  Vec3<mjtNum> vec;
 
   // construct 3D vector
   switch ((mjtMouse) action) {
@@ -313,8 +318,9 @@ static void convert2D(mjtNum* res, int action, mjtNum dx, mjtNum dy, const mjtNu
 // move camera with mouse; action is mjtMouse
 void mjv_moveCamera(const mjModel* m, int action, mjtNum reldx, mjtNum reldy,
                     const mjvScene* scn, mjvCamera* cam) {
-  mjtNum headpos[3], forward[3], up[3], right[3];
-  mjtNum vec[3], dif[3], scl;
+  Vec3<mjtNum> headpos, forward, up, right;
+  Vec3<mjtNum> vec, dif;
+  mjtNum scl;
 
   // fixed camera: nothing to do
   if (cam->type == mjCAMERA_FIXED) {
@@ -409,7 +415,8 @@ void mjv_movePerturb(const mjModel* m, const mjData* d, int action, mjtNum reldx
 
   int sel = pert->select;
   const mjtNum* xmat = d->xmat+9*sel;
-  mjtNum forward[3], vec[3], scl, q1[4], xiquat[4];
+  Vec3<mjtNum> forward, vec;
+  mjtNum scl, q1[4], xiquat[4];
 
   // get camera info and align
   mjv_cameraInModel(NULL, forward, NULL, scn);
@@ -463,7 +470,7 @@ void mjv_movePerturb(const mjModel* m, const mjData* d, int action, mjtNum reldx
       mju_mulQuat(q2, q1, pert->refquat);
 
       // convert q2 to axis-angle
-      mjtNum dif[3];
+      Vec3<mjtNum> dif;
       mju_quat2Vel(dif, q2, 1);
       scl = mju_normalize3(dif);
 
@@ -493,8 +500,9 @@ void mjv_movePerturb(const mjModel* m, const mjData* d, int action, mjtNum reldx
 // move model with mouse; action is mjtMouse
 void mjv_moveModel(const mjModel* m, int action, mjtNum reldx, mjtNum reldy,
                    const mjtNum roomup[3], mjvScene* scn) {
-  mjtNum roomforward[3], roomright[3], camforward[3];
-  mjtNum vec[3], scl, quat[4], rotate[4], result[4];
+  Vec3<mjtNum> roomforward, roomright, camforward;
+  Vec3<mjtNum> vec;
+  mjtNum scl, quat[4], rotate[4], result[4];
 
   // transformation disabled: nothing to do
   if (!scn->enabletransform) {
@@ -573,7 +581,7 @@ void mjv_initPerturb(const mjModel* m, mjData* d, const mjvScene* scn, mjvPertur
 
   int nv  = m->nv;
   int sel = pert->select;
-  mjtNum headpos[3], forward[3], dif[3];
+  Vec3<mjtNum> headpos, forward, dif;
 
   mjtNum* jac = mjSTACKALLOC(d, 3*nv, mjtNum);
   mjtNum* jacM2 = mjSTACKALLOC(d, 3*nv, mjtNum);
@@ -586,7 +594,7 @@ void mjv_initPerturb(const mjModel* m, mjData* d, const mjvScene* scn, mjvPertur
   }
 
   // compute selection point in world coordinates
-  mjtNum selpos[3];
+  Vec3<mjtNum> selpos;
   mju_mulMatVec3(selpos, d->xmat+9*sel, pert->localpos);
   mju_addTo3(selpos, d->xpos+3*sel);
 
@@ -630,7 +638,8 @@ void mjv_initPerturb(const mjModel* m, mjData* d, const mjvScene* scn, mjvPertur
 //  d->qpos written only if flg_paused and subtree root for selected body has free joint
 void mjv_applyPerturbPose(const mjModel* m, mjData* d, const mjvPerturb* pert, int flg_paused) {
   int rootid = 0, sel = pert->select;
-  mjtNum pos1[3], quat1[4], pos2[3], quat2[4], refpos[3], refquat[4];
+  Vec3<mjtNum> pos1, pos2, refpos;
+  mjtNum quat1[4], quat2[4], refquat[4];
   mjtNum *Rpos, *Rquat, *Cpos, *Cquat;
 
   // exit if nothing to do
@@ -704,12 +713,12 @@ void mjv_applyPerturbForce(const mjModel* m, mjData* d, const mjvPerturb* pert) 
 
   if (((pert->active | pert->active2) & mjPERT_TRANSLATE)) {
     // compute selection point in world coordinates
-    mjtNum selpos[3];
+    Vec3<mjtNum> selpos;
     mju_mulMatVec3(selpos, d->xmat+9*sel, pert->localpos);
     mju_addTo3(selpos, d->xpos+3*sel);
 
     // displacement of selection point from reference point
-    mjtNum diff[3];
+    Vec3<mjtNum> diff;
     mju_sub3(diff, selpos, pert->refselpos);
 
     // spring perturbation force
@@ -718,11 +727,11 @@ void mjv_applyPerturbForce(const mjModel* m, mjData* d, const mjvPerturb* pert) 
     mju_scl3(force, force, -stiffness*pert->localmass);
 
     // moment arm w.r.t body com
-    mjtNum moment_arm[3];
+    Vec3<mjtNum> moment_arm;
     mju_sub3(moment_arm, selpos, d->xipos+3*sel);
 
     // translational velocity of selection point
-    mjtNum svel[3];
+    Vec3<mjtNum> svel;
     mju_cross(svel, body_rotvel, moment_arm);
     mju_addTo3(svel, body_linvel);
 
@@ -753,7 +762,8 @@ void mjv_applyPerturbForce(const mjModel* m, mjData* d, const mjvPerturb* pert) 
 
 // return the average of two OpenGL cameras
 mjvGLCamera mjv_averageCamera(const mjvGLCamera* cam1, const mjvGLCamera* cam2) {
-  mjtNum pos[3], forward[3], up[3], projection, tmp1[3], tmp2[3];
+  Vec3<mjtNum> pos, forward, up, tmp1, tmp2;
+  mjtNum projection;
   mjvGLCamera cam;
 
   // compute pos
@@ -808,7 +818,7 @@ int mjv_select(const mjModel* m, const mjData* d, const mjvOption* vopt,
   mjvGLCamera cam = mjv_averageCamera(scn->camera, scn->camera+1);
 
   // get camera pose in model space
-  mjtNum pos[3], forward[3], up[3], left[3];
+  Vec3<mjtNum> pos, forward, up, left;
   mjv_cameraInModel(pos, forward, up, scn);
   mju_cross(left, up, forward);
   mju_normalize3(left);
@@ -821,7 +831,7 @@ int mjv_select(const mjModel* m, const mjData* d, const mjvOption* vopt,
   mjtNum d_left = -(cam.frustum_center + (2*relx-1)*halfwidth);
 
   // define ray
-  mjtNum ray[3];
+  Vec3<mjtNum> ray;
 
   // construct ray for orthographic camera: fixed direction, modify pos
   if (cam.orthographic) {
@@ -846,7 +856,7 @@ int mjv_select(const mjModel* m, const mjData* d, const mjvOption* vopt,
   // find intersection with flexes
   int flexbodyid = -1;
   mjtNum flexdist = -1;
-  mjtNum flexpnt[3] = {0, 0, 0};
+  Vec3<mjtNum> flexpnt = {0, 0, 0};
   *flexid = -1;
   if (vopt->flags[mjVIS_FLEXVERT] || vopt->flags[mjVIS_FLEXEDGE] ||
       vopt->flags[mjVIS_FLEXFACE] || vopt->flags[mjVIS_FLEXSKIN]) {
@@ -868,7 +878,7 @@ int mjv_select(const mjModel* m, const mjData* d, const mjvOption* vopt,
           int npc = (order+1)*(order+1)*(order+1);
 
           // cell lookup: get local coords and node indices
-          mjtNum loc[3];
+          Vec3<mjtNum> loc;
           int nodeindices[27];  // max npc for quadratic: 3^3 = 27
           mju_cellLookup(coord, m->flex_cellnum+3*i, order, loc, nodeindices);
 
@@ -909,7 +919,7 @@ int mjv_select(const mjModel* m, const mjData* d, const mjvOption* vopt,
   // find intersection with skins
   int skinbodyid = -1;
   mjtNum skindist = -1;
-  mjtNum skinpnt[3] = {0, 0, 0};
+  Vec3<mjtNum> skinpnt = {0, 0, 0};
   *skinid = -1;
   if (vopt->flags[mjVIS_SKIN]) {
     for (int i=0; i < m->nskin; i++) {
@@ -955,7 +965,7 @@ int mjv_select(const mjModel* m, const mjData* d, const mjvOption* vopt,
   }
 
   // find smallest non-negative distance
-  mjtNum raydist[3] = {geomdist, flexdist, skindist};
+  Vec3<mjtNum> raydist = {geomdist, flexdist, skindist};
   int best = -1;
   for (int i=0; i < 3; i++) {
     if (raydist[i] >= 0) {

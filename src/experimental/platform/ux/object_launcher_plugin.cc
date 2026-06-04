@@ -20,6 +20,7 @@
 #include <imgui.h>
 #include <mujoco/mujoco.h>
 #include "experimental/platform/ux/imgui_widgets.h"
+#include "cc/vec.h"
 #include "experimental/platform/ux/plugin.h"
 
 namespace mujoco::studio {
@@ -94,9 +95,9 @@ class ObjectLauncher {
     ;
     object.expiration = data->time + lifetime_;
 
-    mjtNum pos[3];
-    mjtNum dir[3];
-    mjtNum up[3];
+    Vec3<mjtNum> pos;
+    Vec3<mjtNum> dir;
+    Vec3<mjtNum> up;
     mjv_cameraFrame(pos, dir, up, nullptr, data, camera);
     mjs_setName(body->element, object.name.c_str());
 
@@ -169,7 +170,7 @@ class ObjectLauncher {
   mjtNum mass_ = 10.0;
   mjtNum lifetime_ = 5.0;
   mjtGeom type_ = mjGEOM_BOX;
-  mjtNum launch_vel_[3] = {0, 0, 0};
+  Vec3<mjtNum> launch_vel_ = {0, 0, 0};
   std::vector<ObjectInfo> objects_;
 };
 

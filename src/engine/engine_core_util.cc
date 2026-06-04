@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_core_util.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 
@@ -176,7 +177,7 @@ int mj_bodyChain(const mjModel* m, int body, int* chain) {
 void mj_jac(const mjModel* m, const mjData* d,
             mjtNum* jacp, mjtNum* jacr, const mjtNum point[3], int body) {
   int nv = m->nv;
-  mjtNum offset[3];
+  Vec3<mjtNum> offset;
 
   // clear jacobians, compute offset if required
   if (jacp) {
@@ -211,7 +212,7 @@ void mj_jac(const mjModel* m, const mjData* d,
 
     // construct translation jacobian (correct for rotation)
     if (jacp) {
-      mjtNum tmp[3];
+      Vec3<mjtNum> tmp;
       mji_cross(tmp, cdof, offset);
       jacp[i+0*nv] = cdof[3] + tmp[0];
       jacp[i+1*nv] = cdof[4] + tmp[1];
@@ -313,7 +314,7 @@ void mj_jacSparse(const mjModel* m, const mjData* d,
   }
 
   // compute point-com offset
-  mjtNum offset[3];
+  Vec3<mjtNum> offset;
   mju_sub3(offset, point, d->subtree_com+3*m->body_rootid[body]);
 
   // skip fixed bodies
@@ -357,7 +358,7 @@ void mj_jacSparse(const mjModel* m, const mjData* d,
 
     // construct translation jacobian (correct for rotation)
     if (jacp) {
-      mjtNum tmp[3];
+      Vec3<mjtNum> tmp;
       mji_cross(tmp, cdof, offset);
 
       jacp[ci+0*NV] = cdof[3] + tmp[0];
@@ -376,7 +377,7 @@ void mj_jacSparseSimple(const mjModel* m, const mjData* d,
                         mjtNum* jacdifp, mjtNum* jacdifr, const mjtNum* point,
                         int body, int flg_second, int NV, int start) {
   // compute point-com offset
-  mjtNum offset[3];
+  Vec3<mjtNum> offset;
   mju_sub3(offset, point, d->subtree_com+3*m->body_rootid[body]);
 
   // skip fixed body
@@ -409,7 +410,7 @@ void mj_jacSparseSimple(const mjModel* m, const mjData* d,
 
     // construct translation jacobian (correct for rotation)
     if (jacdifp) {
-      mjtNum tmp[3];
+      Vec3<mjtNum> tmp;
       mji_cross(tmp, cdof, offset);
 
       // plus sign
@@ -591,7 +592,7 @@ int mj_jacSum(const mjModel* m, mjData* d, int* chain,
 void mj_jacDot(const mjModel* m, const mjData* d,
                mjtNum* jacp, mjtNum* jacr, const mjtNum point[3], int body) {
   int nv = m->nv;
-  mjtNum offset[3];
+  Vec3<mjtNum> offset;
   mjtNum pvel[6];  // point velocity (rot:lin order)
 
   // clear jacobians, compute offset and pvel if required
@@ -642,11 +643,11 @@ void mj_jacDot(const mjModel* m, const mjData* d,
     // construct translation jacobian (correct for rotation)
     if (jacp) {
       // first correction term, account for varying cdof
-      mjtNum tmp1[3];
+      Vec3<mjtNum> tmp1;
       mji_cross(tmp1, cdof_dot, offset);
 
       // second correction term, account for point translational velocity
-      mjtNum tmp2[3];
+      Vec3<mjtNum> tmp2;
       mji_cross(tmp2, cdof, pvel + 3);
 
       jacp[i+0*nv] += cdof_dot[3] + tmp1[0] + tmp2[0];
@@ -664,7 +665,7 @@ void mj_jacDot(const mjModel* m, const mjData* d,
 void mj_jacDotSparse(const mjModel* m, const mjData* d,
                      mjtNum* jacp, mjtNum* jacr, const mjtNum* point, int body,
                      int NV, const int* chain) {
-  mjtNum offset[3];
+  Vec3<mjtNum> offset;
   mjtNum pvel[6];
 
   // clear jacobians, compute offset and pvel if required
@@ -728,11 +729,11 @@ void mj_jacDotSparse(const mjModel* m, const mjData* d,
     // construct translation jacobian (correct for rotation)
     if (jacp) {
       // first correction term, account for varying cdof
-      mjtNum tmp1[3];
+      Vec3<mjtNum> tmp1;
       mji_cross(tmp1, cdof_dot, offset);
 
       // second correction term, account for point translational velocity
-      mjtNum tmp2[3];
+      Vec3<mjtNum> tmp2;
       mji_cross(tmp2, cdof, pvel + 3);
 
       jacp[ci+0*NV] += cdof_dot[3] + tmp1[0] + tmp2[0];
@@ -761,7 +762,7 @@ void mj_angmomMat(const mjModel* m, mjData* d, mjtNum* mat, int body) {
   mju_zero(mat, 3*nv);
 
   // save the location of the subtree COM
-  mjtNum subtree_com[3];
+  Vec3<mjtNum> subtree_com;
   mju_copy3(subtree_com, d->subtree_com+3*body);
 
   for (int b=body; b < m->nbody; b++) {
@@ -790,7 +791,7 @@ void mj_angmomMat(const mjModel* m, mjData* d, mjtNum* mat, int body) {
     mju_mulMatMat(term1, tmp2, jacr, 3, 3, nv);    // term1 = ximat * inertia * ximat^T * jacr
 
     // location of body COM w.r.t subtree COM
-    mjtNum com[3];
+    Vec3<mjtNum> com;
     mji_sub3(com, d->xipos+3*b, subtree_com);
 
     // skew symmetric matrix representing body_com vector
@@ -934,7 +935,7 @@ void mj_objectAcceleration(const mjModel* m, const mjData* d,
   mju_transformSpatial(vel, d->cvel+6*bodyid, 0, pos, d->subtree_com+3*m->body_rootid[bodyid], rot);
 
   // add Coriolis correction due to rotating frame:  acc_tran += vel_rot x vel_tran
-  mjtNum correction[3];
+  Vec3<mjtNum> correction;
   mji_cross(correction, vel, vel+3);
   mji_addTo3(res+3, correction);
 }
@@ -1014,7 +1015,7 @@ void mju_flexGatherState(const mjModel* m, const mjData* d, int f, mjtNum* xpos,
       mju_copy3(vel + 3*i, body_vel + 3);
 
       // add omega x (xpos - xipos)
-      mjtNum r[3], cross[3];
+      Vec3<mjtNum> r, cross;
       mju_sub3(r, xpos + 3*i, d->xipos + 3*bid);
       mju_cross(cross, body_vel, r);
       mju_addTo3(vel + 3*i, cross);

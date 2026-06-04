@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_passive.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 
@@ -168,7 +169,7 @@ static void mj_flexPassiveInterp(const mjModel* m, mjData* d, int f,
       // rotate back to global frame and scatter using node indices
       mju_negQuat(quat, quat);
       for (int n = 0; n < npe; n++) {
-        mjtNum qfrc[3], qdmp[3];
+        Vec3<mjtNum> qfrc, qdmp;
         mji_rotVecQuat(qfrc, frc_e+3*n, quat);
         mji_rotVecQuat(qdmp, dmp_e+3*n, quat);
         int gidx = gindices[n];
@@ -306,7 +307,7 @@ static void mj_flexPassiveBendInterp(const mjModel* m, mjData* d, int f,
     mjtNum local_A[2] = {edata[2], edata[3]};
     mjtNum local_B[2] = {edata[4], edata[5]};
     mjtNum stiffness = edata[6];
-    mjtNum dn0[3] = {edata[7], edata[8], edata[9]};
+    Vec3<mjtNum> dn0 = {edata[7], edata[8], edata[9]};
 
     if (stiffness == 0) continue;
 
@@ -321,8 +322,8 @@ static void mj_flexPassiveBendInterp(const mjModel* m, mjData* d, int f,
 
 
     // compute deformed normals at edge midpoint
-    mjtNum n_A[3], t1_A[3], t2_A[3];
-    mjtNum n_B[3], t1_B[3], t2_B[3];
+    Vec3<mjtNum> n_A, t1_A, t2_A;
+    Vec3<mjtNum> n_B, t1_B, t2_B;
     mju_flexFaceNormal2D(n_A, t1_A, t2_A, order, xpos_A, local_A);
     mju_flexFaceNormal2D(n_B, t1_B, t2_B, order, xpos_B, local_B);
 
@@ -348,11 +349,11 @@ static void mj_flexPassiveBendInterp(const mjModel* m, mjData* d, int f,
     mju_negQuat(quat_avg, quat_avg);
 
     // rotate dn0 from rest frame to current frame using average corotational R
-    mjtNum dn0_rot[3];
+    Vec3<mjtNum> dn0_rot;
     mju_rotVecQuat(dn0_rot, dn0, quat_avg);
 
     // normal jump residual: r = (n_A - n_B) - R_avg * dn0
-    mjtNum r[3];
+    Vec3<mjtNum> r;
     mji_sub3(r, n_A, n_B);
     r[0] -= dn0_rot[0]; r[1] -= dn0_rot[1]; r[2] -= dn0_rot[2];
 
@@ -360,19 +361,19 @@ static void mj_flexPassiveBendInterp(const mjModel* m, mjData* d, int f,
     if (enbl_spring) {
       // w_A = P_A * r = (r - n_A*(n_A.r)) / |c_A|
       mjtNum dot_A = mju_dot3(n_A, r);
-      mjtNum w_A[3];
+      Vec3<mjtNum> w_A;
       w_A[0] = (r[0] - n_A[0]*dot_A) * inv_A;
       w_A[1] = (r[1] - n_A[1]*dot_A) * inv_A;
       w_A[2] = (r[2] - n_A[2]*dot_A) * inv_A;
 
       mjtNum dot_B = mju_dot3(n_B, r);
-      mjtNum w_B[3];
+      Vec3<mjtNum> w_B;
       w_B[0] = (r[0] - n_B[0]*dot_B) * inv_B;
       w_B[1] = (r[1] - n_B[1]*dot_B) * inv_B;
       w_B[2] = (r[2] - n_B[2]*dot_B) * inv_B;
 
       // precompute cross products: wA x t2_A, wA x t1_A
-      mjtNum wAt2[3], wAt1[3], wBt2[3], wBt1[3];
+      Vec3<mjtNum> wAt2, wAt1, wBt2, wBt1;
       mji_cross(wAt2, w_A, t2_A);
       mji_cross(wAt1, w_A, t1_A);
       mji_cross(wBt2, w_B, t2_B);
@@ -651,7 +652,7 @@ static void mj_springdamper(const mjModel* m, mjData* d) {
         case mjJNT_FREE:
           // apply force
           {
-            mjtNum dif[3];
+            Vec3<mjtNum> dif;
             mji_sub3(dif, d->qpos+padr, m->qpos_spring+padr);
             mjtNum r = mju_norm3(dif);
             mjtNum k = mju_polyForce(stiffness, spoly, r, mjNPOLY, 0);
@@ -666,7 +667,8 @@ static void mj_springdamper(const mjModel* m, mjData* d) {
         case mjJNT_BALL:
           {
             // convert quaternion difference into angular "velocity"
-            mjtNum dif[3], quat[4];
+            Vec3<mjtNum> dif;
+            mjtNum quat[4];
             mji_copy4(quat, d->qpos+padr);
             mju_normalize4(quat);
             mji_subQuat(dif, quat, m->qpos_spring + padr);
@@ -820,7 +822,7 @@ static int mj_gravcomp(const mjModel* m, mjData* d) {
   }
 
   int has_gravcomp = 0;
-  mjtNum force[3], torque[3]={0};
+  Vec3<mjtNum> force, torque={0};
   int sleep_filter = mjENABLED(mjENBL_SLEEP) && d->nbody_awake < m->nbody;
   int nbody = sleep_filter ? d->nbody_awake : m->nbody;
 
@@ -1052,7 +1054,8 @@ void mj_passive(const mjModel* m, mjData* d) {
 
 // fluid forces based on inertia-box approximation
 void mj_inertiaBoxFluidModel(const mjModel* m, mjData* d, int i) {
-  mjtNum lvel[6], wind[6], lwind[6], lfrc[6], bfrc[6], box[3], diam, *inertia;
+  Vec3<mjtNum> box;
+  mjtNum lvel[6], wind[6], lwind[6], lfrc[6], bfrc[6], diam, *inertia;
   inertia = m->body_inertia + 3*i;
   box[0] = mju_sqrt(mju_max(mjMINVAL,
                             (inertia[1] + inertia[2] - inertia[0])) / m->body_mass[i] * 6.0);
@@ -1114,7 +1117,7 @@ void mj_inertiaBoxFluidModel(const mjModel* m, mjData* d, int i) {
 void mj_ellipsoidFluidModel(const mjModel* m, mjData* d, int bodyid) {
   mjtNum lvel[6], wind[6], lwind[6], lfrc[6], bfrc[6];
   mjtNum geom_interaction_coef, magnus_lift_coef, kutta_lift_coef;
-  mjtNum semiaxes[3], virtual_mass[3], virtual_inertia[3];
+  Vec3<mjtNum> semiaxes, virtual_mass, virtual_inertia;
   mjtNum blunt_drag_coef, slender_drag_coef, ang_drag_coef;
 
   for (int j=0; j < m->body_geomnum[bodyid]; j++) {
@@ -1200,7 +1203,7 @@ void mj_addedMassForces(const mjtNum local_vels[6], const mjtNum local_accels[6]
     local_force[5] -= fluid_density * virtual_mass[2] * local_accels[5];
   }
 
-  mjtNum added_mass_force[3], added_mass_torque1[3], added_mass_torque2[3];
+  Vec3<mjtNum> added_mass_force, added_mass_torque1, added_mass_torque2;
   mji_cross(added_mass_force, virtual_lin_mom, ang_vel);
   mji_cross(added_mass_torque1, virtual_lin_mom, lin_vel);
   mji_cross(added_mass_torque2, virtual_ang_mom, ang_vel);
@@ -1242,7 +1245,7 @@ void mj_viscousForces(
   const mjtNum d_mid = size[0] + size[1] + size[2] - d_max - d_min;
   const mjtNum A_max = mjPI * d_max * d_mid;
 
-  mjtNum magnus_force[3];
+  Vec3<mjtNum> magnus_force;
   mji_cross(magnus_force, ang_vel, lin_vel);
   magnus_force[0] *= magnus_lift_coef * fluid_density * volume;
   magnus_force[1] *= magnus_lift_coef * fluid_density * volume;
@@ -1271,12 +1274,12 @@ void mj_viscousForces(
   // divided by proj_denom instead of sqrt(proj_denom) to account for skipped normalization in norm
   const mjtNum cos_alpha = proj_num / mju_max(
     mjMINVAL, mju_norm3(lin_vel) * proj_denom);
-  mjtNum kutta_circ[3];
+  Vec3<mjtNum> kutta_circ;
   mji_cross(kutta_circ, norm, lin_vel);
   kutta_circ[0] *= kutta_lift_coef * fluid_density * cos_alpha * A_proj;
   kutta_circ[1] *= kutta_lift_coef * fluid_density * cos_alpha * A_proj;
   kutta_circ[2] *= kutta_lift_coef * fluid_density * cos_alpha * A_proj;
-  mjtNum kutta_force[3];
+  Vec3<mjtNum> kutta_force;
   mji_cross(kutta_force, kutta_circ, lin_vel);
 
   // viscous force and torque in Stokes flow, analytical for spherical bodies

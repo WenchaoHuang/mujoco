@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "experimental/platform/sim/step_control.h"
+#include "cc/vec.h"
 
 #include <algorithm>
 #include <chrono>
@@ -53,7 +54,7 @@ struct ViscousPauseState {
     }
   }
   mjModel* model;
-  mjtNum gravity[3];
+  Vec3<mjtNum> gravity;
   mjtNum viscosity;
   int disableflags;
 };

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_derivative.h"
+#include "cc/vec.h"
 
 #include <mujoco/mjdata.h>
 #include <mujoco/mjmodel.h>
@@ -220,7 +221,7 @@ void mjd_subQuat(const mjtNum qa[4], const mjtNum qb[4], mjtNum Da[9], mjtNum Db
   }
 
   // compute axis-angle quaternion difference
-  mjtNum axis[3];
+  Vec3<mjtNum> axis;
   mju_subQuat(axis, qa, qb);
 
   // normalize axis, get half-angle
@@ -263,7 +264,7 @@ void mjd_subQuat(const mjtNum qa[4], const mjtNum qb[4], mjtNum Da[9], mjtNum Db
 void mjd_quatIntegrate(const mjtNum vel[3], mjtNum scale,
                        mjtNum Dquat[9], mjtNum Dvel[9], mjtNum Dscale[3]) {
   // scaled velocity
-  mjtNum s[3] = {scale*vel[0], scale*vel[1], scale*vel[2]};
+  Vec3<mjtNum> s = {scale*vel[0], scale*vel[1], scale*vel[2]};
 
   // 3 basis matrices
   mjtNum eye[9] = {
@@ -1629,7 +1630,7 @@ void mjd_ellipsoidFluid(const mjModel* m, mjData* d, int bodyid) {
 
   mjtNum lvel[6], wind[6], lwind[6];
   mjtNum geom_interaction_coef, magnus_lift_coef, kutta_lift_coef;
-  mjtNum semiaxes[3], virtual_mass[3], virtual_inertia[3];
+  Vec3<mjtNum> semiaxes, virtual_mass, virtual_inertia;
   mjtNum blunt_drag_coef, slender_drag_coef, ang_drag_coef;
 
   if (mj_isSparse(m)) {
@@ -1731,7 +1732,8 @@ void mjd_inertiaBoxFluid(const mjModel* m, mjData* d, int i) {
   mjtNum* tmp = mjSTACKALLOC(d, 3*nv, mjtNum);
   int* colind = mjSTACKALLOC(d, 6*nv, int);
 
-  mjtNum lvel[6], wind[6], lwind[6], box[3], B;
+  Vec3<mjtNum> box;
+  mjtNum lvel[6], wind[6], lwind[6], B;
   mjtNum* inertia = m->body_inertia + 3*i;
 
   // equivalent inertia box

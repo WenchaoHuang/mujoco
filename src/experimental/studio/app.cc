@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "experimental/studio/app.h"
+#include "cc/vec.h"
 
 #include <algorithm>
 #include <array>
@@ -541,7 +542,7 @@ void App::HandleMouseEvents() {
       }
 
       // Compute the local position of the selected object in the world.
-      mjtNum tmp[3];
+      Vec3<mjtNum> tmp;
       mju_sub3(tmp, picked.point, data()->xpos + 3 * picked.body);
       mju_mulMatTVec(perturb_.localpos, data()->xmat + 9 * picked.body, tmp, 3,
                      3);

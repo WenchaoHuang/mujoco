@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "experimental/platform/ux/interaction.h"
+#include "cc/vec.h"
 
 #include <algorithm>
 #include <cmath>
@@ -41,7 +42,7 @@ static mjtNum CalculateMovementScale(const mjModel* m, const mjvCamera* cam) {
 
 static void AlignToCamera(mjtNum res[3], mjtMouse action, mjtNum dx, mjtNum dy,
                           const mjtNum forward[3]) {
-  mjtNum vec[3];
+  Vec3<mjtNum> vec;
   switch (action) {
     case mjMOUSE_ROTATE_V:
       vec[0] = dy;
@@ -79,7 +80,7 @@ void InitPerturb(const mjModel* m, const mjData* d, const mjvCamera* cam,
                  mjvPerturb* pert, mjtPertBit active) {
   // compute selection point in world coordinates
   const int sel = pert->select;
-  mjtNum selpos[3];
+  Vec3<mjtNum> selpos;
   mju_mulMatVec3(selpos, d->xmat + 9 * sel, pert->localpos);
   mju_addTo3(selpos, d->xpos + 3 * sel);
 
@@ -113,11 +114,11 @@ void InitPerturb(const mjModel* m, const mjData* d, const mjvCamera* cam,
   mju_copy3(pert->refselpos, selpos);
 
   // get camera info
-  mjtNum headpos[3], forward[3];
+  Vec3<mjtNum> headpos, forward;
   mjv_cameraFrame(headpos, forward, nullptr, nullptr, d, cam);
 
   // compute scaling: rendered pert->refselpos displacement = mouse displacement
-  mjtNum dif[3];
+  Vec3<mjtNum> dif;
   mju_sub3(dif, pert->refselpos, headpos);
   pert->scale = CalculateMovementScale(m, cam) * mju_dot3(dif, forward);
   pert->active = active;
@@ -132,7 +133,8 @@ void MovePerturb(const mjModel* m, const mjData* d, const mjvCamera* cam,
 
   int sel = pert->select;
   const mjtNum* xmat = d->xmat + 9 * sel;
-  mjtNum forward[3], vec[3], scl, q1[4], xiquat[4];
+  Vec3<mjtNum> forward, vec;
+  mjtNum scl, q1[4], xiquat[4];
 
   // get camera info and align
   mjv_cameraFrame(nullptr, forward, nullptr, nullptr, d, cam);
@@ -186,7 +188,7 @@ void MovePerturb(const mjModel* m, const mjData* d, const mjvCamera* cam,
         mju_mulQuat(q2, q1, pert->refquat);
 
         // convert q2 to axis-angle
-        mjtNum dif[3];
+        Vec3<mjtNum> dif;
         mju_quat2Vel(dif, q2, 1);
         scl = mju_normalize3(dif);
 
@@ -218,8 +220,9 @@ void MoveCamera(const mjModel* m, const mjData* d, mjvCamera* cam,
     return;
   }
 
-  mjtNum headpos[3], forward[3], up[3], right[3];
-  mjtNum vec[3], dif[3], scl;
+  Vec3<mjtNum> headpos, forward, up, right;
+  Vec3<mjtNum> vec, dif;
+  mjtNum scl;
 
   switch (motion) {
     case CameraMotion::ZOOM:
@@ -312,7 +315,7 @@ void MoveCamera(const mjModel* m, const mjData* d, mjvCamera* cam,
 static void MakePickRay(mjtNum pos[3], mjtNum ray[3], const mjModel* m,
                         const mjData* d, const mjvCamera* camera, float relx,
                         float rely, float aspect_ratio) {
-  mjtNum forward[3], up[3], right[3];
+  Vec3<mjtNum> forward, up, right;
   mjv_cameraFrame(pos, forward, up, right, d, camera);
 
   float zver[2], zhor[2], zclip[2] = {0, 0};
@@ -437,7 +440,7 @@ static void MakeSkin(const mjModel* m, const mjData* d, const mjvOption* opt,
     mju_quat2Mat(rotate, quat);
 
     // compute translation
-    mjtNum translate[3];
+    Vec3<mjtNum> translate;
     mju_mulMatVec3(translate, rotate, bindpos);
     mju_sub3(translate, d->xpos + 3 * bodyid, translate);
 
@@ -456,7 +459,7 @@ static void MakeSkin(const mjModel* m, const mjData* d, const mjvOption* opt,
       };
 
       // transform
-      mjtNum pos1[3];
+      Vec3<mjtNum> pos1;
       mju_mulMatVec3(pos1, rotate, pos);
       mju_addTo3(pos1, translate);
 
@@ -476,14 +479,14 @@ static void MakeSkin(const mjModel* m, const mjData* d, const mjvOption* opt,
                     m->skin_face[3 * k + 2]};
 
       // get triangle edges
-      mjtNum vec01[3], vec02[3];
+      Vec3<mjtNum> vec01, vec02;
       for (int r = 0; r < 3; r++) {
         vec01[r] = skinvert[3 * (vid[1]) + r] - skinvert[3 * (vid[0]) + r];
         vec02[r] = skinvert[3 * (vid[2]) + r] - skinvert[3 * (vid[0]) + r];
       }
 
       // compute face normal
-      mjtNum nrm[3];
+      Vec3<mjtNum> nrm;
       mju_cross(nrm, vec01, vec02);
 
       // add normal to each vertex with weight = area
@@ -580,8 +583,8 @@ static PickResult PickSkin(const mjModel* m, const mjData* d,
 PickResult Pick(const mjModel* m, const mjData* d, const mjvCamera* camera,
                 float x, float y, float aspect_ratio,
                 const mjvOption* vis_options) {
-  mjtNum ray_pos[3];
-  mjtNum ray_dir[3];
+  Vec3<mjtNum> ray_pos;
+  Vec3<mjtNum> ray_dir;
   MakePickRay(ray_pos, ray_dir, m, d, camera, x, 1.0 - y, aspect_ratio);
 
   PickResult results[3];

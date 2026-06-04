@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_setconst.h"
+#include "cc/vec.h"
 
 #include "engine/engine_inline.h"
 
@@ -534,7 +535,7 @@ static void makeFlexSparse(mjModel* m, mjData* d) {
           int e = adj_edges[v_edge_adr[v] + k];
 
           // compute rest edge vector
-          mjtNum dx[3];
+          Vec3<mjtNum> dx;
           int v1 = m->flex_edge[2 * (ebase + e)];
           int v2 = m->flex_edge[2 * (ebase + e) + 1];
           mju_sub3(dx, m->flex_vert0 + 3 * (vbase + v2),
@@ -659,7 +660,7 @@ static void mj_alignFlex(mjModel* m, mjData* d) {
       int t2 = m->flex_elem[t_adr + 2];
 
       // compute normal from first element
-      mjtNum edge1[3], edge2[3], normal[3];
+      Vec3<mjtNum> edge1, edge2, normal;
       mju_sub3(edge1, m->flex_vert0 + 3 * (vbase + t1), m->flex_vert0 + 3 * (vbase + t0));
       mju_sub3(edge2, m->flex_vert0 + 3 * (vbase + t2),
                m->flex_vert0 + 3 * (vbase + t0));
@@ -675,7 +676,7 @@ static void mj_alignFlex(mjModel* m, mjData* d) {
       int nvert = m->flex_vertnum[f];
       for (int v = 0; v < nvert; v++) {
         mjtNum* vert = m->flex_vert0 + 3 * (vbase + v);
-        mjtNum res[3];
+        Vec3<mjtNum> res;
 
         mju_mulMatTVec3(res, mat, vert);
         mju_copy3(vert, res);
@@ -700,7 +701,8 @@ static void set0(mjModel* m, mjData* d) {
 
   mj_alignFlex(m, d);
   int nv = m->nv;
-  mjtNum A[36] = {0}, pos[3], quat[4];
+  Vec3<mjtNum> pos;
+  mjtNum A[36] = {0}, quat[4];
   mj_markStack(d);
   mjtNum* jac = mjSTACKALLOC(d, 6*nv, mjtNum);
   mjtNum* tmp = mjSTACKALLOC(d, 6*nv, mjtNum);
@@ -1050,8 +1052,8 @@ static void updateBox(mjtNum* xmin, mjtNum* xmax, mjtNum* pos, mjtNum radius) {
 
 // compute stat; assume computations already executed in qpos0
 static void setStat(mjModel* m, mjData* d) {
-  mjtNum xmin[3] = {1E+10, 1E+10, 1E+10};
-  mjtNum xmax[3] = {-1E+10, -1E+10, -1E+10};
+  Vec3<mjtNum> xmin = {1E+10, 1E+10, 1E+10};
+  Vec3<mjtNum> xmax = {-1E+10, -1E+10, -1E+10};
   mjtNum rbound;
   mj_markStack(d);
 

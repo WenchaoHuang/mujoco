@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "experimental/platform/helpers.h"
+#include "cc/vec.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -121,7 +122,7 @@ const void* GetValue(const mjModel* model, const mjData* data,
 }
 
 std::string CameraToString(const mjData* data, const mjvCamera* camera) {
-  mjtNum pos[3], forward[3], up[3], right[3];
+  Vec3<mjtNum> pos, forward, up, right;
   mjv_cameraFrame(pos, forward, up, right, data, camera);
   char str[500];
   std::snprintf(str, sizeof(str),

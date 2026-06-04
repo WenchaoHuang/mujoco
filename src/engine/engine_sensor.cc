@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_sensor.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 
@@ -94,9 +95,9 @@ static void* tactile_taxel_batch(const mjModel* m, mjData* d, void* args) {
 
   // process taxels in [start_taxel, end_taxel)
   for (int j = t->start_taxel; j < t->end_taxel; j++) {
-    mjtNum pos[3] = {mesh_vert[3*j + 0], mesh_vert[3*j + 1], mesh_vert[3*j + 2]};
+    Vec3<mjtNum> pos = {mesh_vert[3*j + 0], mesh_vert[3*j + 1], mesh_vert[3*j + 2]};
 
-    mjtNum xpos[3];
+    Vec3<mjtNum> xpos;
     mju_mulMatVec3(xpos, geom_mat, pos);
     mju_addTo3(xpos, geom_pos);
 
@@ -133,7 +134,7 @@ static void* tactile_taxel_batch(const mjModel* m, mjData* d, void* args) {
       geom_sdf.geomtype = &geomtype[0];
 
       // position in other geom frame
-      mjtNum tmp[3], lpos[3];
+      Vec3<mjtNum> tmp, lpos;
       mju_sub3(tmp, xpos, d->geom_xpos + 3*geom);
       mju_mulMatTVec3(lpos, d->geom_xmat + 9*geom, tmp);
 
@@ -152,7 +153,8 @@ static void* tactile_taxel_batch(const mjModel* m, mjData* d, void* args) {
       }
 
       // get velocity in global frame
-      mjtNum vel_sensor[6], vel_other[6], vel_rel[3];
+      Vec3<mjtNum> vel_rel;
+      mjtNum vel_sensor[6], vel_other[6];
       mju_transformSpatial(
           vel_sensor, d->cvel + 6 * parent_weld, 0, xpos,
           d->subtree_com + 3 * m->body_rootid[parent_weld], NULL);
@@ -347,7 +349,7 @@ static void cam_project(mjtNum sensordata[2], const mjtNum target_xpos[3],
 
   // project world coordinates into pixel space, see:
   // https://en.wikipedia.org/wiki/3D_projection#Mathematical_formula
-  mjtNum pixel_coord_hom[3] = {0};
+  Vec3<mjtNum> pixel_coord_hom = {0};
   for (int i=0; i < 3; i++) {
     for (int j=0; j < 4; j++) {
       pixel_coord_hom[i] += proj[i][j] * pos_hom[j];
@@ -496,7 +498,7 @@ static void total_wrench(mjtNum force[3], mjtNum torque[3], const mjtNum point[3
 
   for (int j = 0; j < n; ++j) {
     // rotate force, torque from contact frame to global frame
-    mjtNum force_j[3], torque_j[3];
+    Vec3<mjtNum> force_j, torque_j;
     mju_mulMatTVec3(force_j, frame + 9*j, wrench + 6*j);
     mju_mulMatTVec3(torque_j, frame + 9*j, wrench + 6*j + 3);
 
@@ -505,9 +507,9 @@ static void total_wrench(mjtNum force[3], mjtNum torque[3], const mjtNum point[3
     mju_addTo3(torque, torque_j);
 
     // add induced moment:  torque += (pos - point) x force
-    mjtNum diff[3];
+    Vec3<mjtNum> diff;
     mju_sub3(diff, pos + 3*j, point);
-    mjtNum induced_torque[3];
+    Vec3<mjtNum> induced_torque;
     mju_cross(induced_torque, diff, force_j);
     mju_addTo3(torque, induced_torque);
   }
@@ -537,7 +539,7 @@ static mjtNum* fill_raydata(mjtNum* ptr, int dataspec, mjtNum dist,
   }
 
   // compute point if needed for POINT or DEPTH fields
-  mjtNum point[3] = {0, 0, 0};
+  Vec3<mjtNum> point = {0, 0, 0};
   if ((dataspec & (1 << mjRAYDATA_POINT)) || (dataspec & (1 << mjRAYDATA_DEPTH))) {
     if (hit) mju_addScl3(point, origin, direction, dist);
   }
@@ -555,7 +557,7 @@ static mjtNum* fill_raydata(mjtNum* ptr, int dataspec, mjtNum dist,
     if (hit) {
       if (cam_z) {
         // camera depth: project onto camera z-axis
-        mjtNum delta[3];
+        Vec3<mjtNum> delta;
         mju_sub3(delta, point, cam_xpos);
         *ptr++ = -mju_dot3(delta, cam_z);
       } else {
@@ -580,7 +582,8 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
   int refid = m->sensor_refid[i];
   int reftype = m->sensor_reftype[i];
 
-  mjtNum rvec[3], *xpos, *xmat, *xpos_ref, *xmat_ref;
+  Vec3<mjtNum> rvec;
+  mjtNum *xpos, *xmat, *xpos_ref, *xmat_ref;
 
   // process according to type
   switch (type) {
@@ -607,7 +610,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
         const mjtNum* origin = d->site_xpos + 3*objid;
 
         int geomid;
-        mjtNum normal[3];
+        Vec3<mjtNum> normal;
         mjtNum* p_normal = (dataspec & (1 << mjRAYDATA_NORMAL)) ? normal : NULL;
         mjtNum dist = mj_ray(m, d, origin, rvec, NULL, 1,
                              m->site_bodyid[objid], &geomid, p_normal);
@@ -625,7 +628,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
         const int projection = m->cam_projection[objid];
 
         // camera z-axis (pointing into scene, negative of optical axis)
-        mjtNum cam_z[3] = {cam_xmat[2], cam_xmat[5], cam_xmat[8]};
+        Vec3<mjtNum> cam_z = {cam_xmat[2], cam_xmat[5], cam_xmat[8]};
 
         // compute focal length in pixels using helper
         mjtNum fx, fy, cx, cy, ortho_extent;
@@ -647,7 +650,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
           for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
               int idx = row*width + col;
-              mjtNum origin[3];
+              Vec3<mjtNum> origin;
               mju_camPixelRay(origin, vec + 3*idx, cam_xpos, cam_xmat,
                               col, row, fx, fy, cx, cy, projection, ortho_extent);
             }
@@ -672,12 +675,12 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
           // orthographic: parallel rays, different origins
           for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
-              mjtNum origin[3], direction[3];
+              Vec3<mjtNum> origin, direction;
               mju_camPixelRay(origin, direction, cam_xpos, cam_xmat,
                               col, row, fx, fy, cx, cy, projection, ortho_extent);
 
               int geomid;
-              mjtNum normal[3];
+              Vec3<mjtNum> normal;
               mjtNum dist = mj_ray(m, d, origin, direction, NULL, 1,
                                    bodyexclude, &geomid, normal);
 
@@ -757,7 +760,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
       } else {
         // offset = (0 or 1 or 2) for (x or y or z)-axis sensors, respectively
         int offset = type - mjSENS_FRAMEXAXIS;
-        mjtNum axis[3] = {xmat[offset], xmat[offset+3], xmat[offset+6]};
+        Vec3<mjtNum> axis = {xmat[offset], xmat[offset+3], xmat[offset+6]};
         mju_mulMatTVec3(sensordata, xmat_ref, axis);
       }
     }
@@ -850,7 +853,7 @@ static void mj_computeSensorPos(const mjModel* m, mjData* d, int i, mjtNum* sens
       if (type == mjSENS_GEOMDIST) {
         sensordata[0] = dist;
       } else if (type == mjSENS_GEOMNORMAL) {
-        mjtNum normal[3] = {fromto[3]-fromto[0], fromto[4]-fromto[1], fromto[5]-fromto[2]};
+        Vec3<mjtNum> normal = {fromto[3]-fromto[0], fromto[4]-fromto[1], fromto[5]-fromto[2]};
         if (normal[0] || normal[1] || normal[2]) {
           mju_normalize3(normal);
         }
@@ -962,7 +965,8 @@ static void mj_computeSensorVel(const mjModel* m, mjData* d, int i, mjtNum* sens
     mj_objectVelocity(m, d, objtype, objid, xvel, 0);
 
     if (refid > -1) {  // reference frame specified
-      mjtNum *xpos, *xmat, *xpos_ref, *xmat_ref, xvel_ref[6], rel_vel[6], cross[3], rvec[3];
+      Vec3<mjtNum> cross, rvec;
+      mjtNum *xpos, *xmat, *xpos_ref, *xmat_ref, xvel_ref[6], rel_vel[6];
 
       // in global frame: object and reference position, reference orientation and velocity
       get_xpos_xmat(d, (mjtObj) objtype, objid, i, &xpos, &xmat);
@@ -1011,7 +1015,8 @@ static void mj_computeSensorAcc(const mjModel* m, mjData* d, int i, mjtNum* sens
   int objtype = m->sensor_objtype[i];
   int objid = m->sensor_objid[i];
 
-  mjtNum tmp[6], conforce[6], conray[3], frc;
+  Vec3<mjtNum> conray;
+  mjtNum tmp[6], conforce[6], frc;
   const mjContact* con;
   int rootid, bodyid;
 
@@ -1158,7 +1163,7 @@ static void mj_computeSensorAcc(const mjModel* m, mjData* d, int i, mjtNum* sens
         }
 
         // compute point: force-weighted centroid of contact positions
-        mjtNum point[3] = {0};
+        Vec3<mjtNum> point = {0};
         mjtNum total_force = 0;
         for (int j=0; j < nmatch; j++) {
           mjtNum weight = mju_norm3(wrench + 6*j);
@@ -1168,7 +1173,7 @@ static void mj_computeSensorAcc(const mjModel* m, mjData* d, int i, mjtNum* sens
         mju_scl3(point, point, 1.0 / mjMAX(total_force, mjMINVAL));
 
         // compute total wrench about point, in the global frame
-        mjtNum force[3], torque[3];
+        Vec3<mjtNum> force, torque;
         total_wrench(force, torque, point, nmatch, wrench, pos, frame);
 
         // write data to slot 0
@@ -1702,7 +1707,8 @@ void mj_sensorAcc(const mjModel* m, mjData* d) {
 // position-dependent energy (potential)
 void mj_energyPos(const mjModel* m, mjData* d) {
   int padr;
-  mjtNum dif[3], quat[4], stiffness, x;
+  Vec3<mjtNum> dif;
+  mjtNum quat[4], stiffness, x;
 
   // init potential energy:  -sum_i body(i).mass * mju_dot(body(i).pos, gravity)
   d->energy[0] = 0;

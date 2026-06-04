@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_collision_sdf.h"
+#include "cc/vec.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -33,7 +34,7 @@
 //---------------------------- interpolated sdf -------------------------------------------
 
 mjtNum boxProjection(mjtNum point[3], const mjtNum box[6]) {
-  mjtNum r[3] = {point[0] - box[0], point[1] - box[1], point[2] - box[2]};
+  Vec3<mjtNum> r = {point[0] - box[0], point[1] - box[1], point[2] - box[2]};
   mjtNum q[3] = {mju_abs(r[0]) - box[3], mju_abs(r[1]) - box[4],
                  mju_abs(r[2]) - box[5]};
   mjtNum dist_sqr = 0;
@@ -74,7 +75,7 @@ static int findOct(mjtNum w[8], mjtNum dw[8][3], const mjtNum* oct_aabb,
 
   while (niter-- > 0) {
     int node = stack;
-    mjtNum vmin[3], vmax[3];
+    Vec3<mjtNum> vmin, vmax;
 
     if (node == -1) {  // SHOULD NOT OCCUR
       mju_error("Invalid node number");
@@ -148,7 +149,7 @@ mjtNum oct_distance(const mjModel* m, const mjtNum p[3], int meshid) {
 
   mjtNum w[8];
   mjtNum sdf = 0;
-  mjtNum point[3] = {p[0], p[1], p[2]};
+  Vec3<mjtNum> point = {p[0], p[1], p[2]};
   mjtNum boxDist = boxProjection(point, oct_aabb);
   int node = findOct(w, NULL, oct_aabb, oct_child, point);
   for (int i = 0; i < 8; ++i) {
@@ -161,7 +162,7 @@ mjtNum oct_distance(const mjModel* m, const mjtNum p[3], int meshid) {
 // gradient of sdf
 void oct_gradient(const mjModel* m, mjtNum grad[3], const mjtNum point[3], int meshid) {
   mju_zero3(grad);
-  mjtNum p[3] = {point[0], point[1], point[2]};
+  Vec3<mjtNum> p = {point[0], point[1], point[2]};
 
   int octadr = m->mesh_octadr[meshid];
   int* oct_child = m->oct_child + 8*octadr;
@@ -187,11 +188,11 @@ void oct_gradient(const mjModel* m, mjtNum grad[3], const mjtNum point[3], int m
   // finite difference in the exterior
   mjtNum eps = 1e-8;
   mjtNum dist0 = oct_distance(m, point, meshid);
-  mjtNum pointX[3] = {point[0]+eps, point[1], point[2]};
+  Vec3<mjtNum> pointX = {point[0]+eps, point[1], point[2]};
   mjtNum distX = oct_distance(m, pointX, meshid);
-  mjtNum pointY[3] = {point[0], point[1]+eps, point[2]};
+  Vec3<mjtNum> pointY = {point[0], point[1]+eps, point[2]};
   mjtNum distY = oct_distance(m, pointY, meshid);
-  mjtNum pointZ[3] = {point[0], point[1], point[2]+eps};
+  Vec3<mjtNum> pointZ = {point[0], point[1], point[2]+eps};
   mjtNum distZ = oct_distance(m, pointZ, meshid);
 
   grad[0] = (distX - dist0) / eps;
@@ -217,7 +218,7 @@ static void radialField3d(mjtNum field[3], const mjtNum a[3], const mjtNum x[3],
 
 static mjtNum geomDistance(const mjModel* m, const mjData* d, const mjpPlugin* p,
                            int i, const mjtNum x[3], mjtGeom type) {
-  mjtNum a[3], b[3];
+  Vec3<mjtNum> a, b;
   const mjtNum* size = m->geom_size+3*i;
 
   // see https://iquilezles.org/articles/distfunctions/
@@ -241,7 +242,7 @@ static mjtNum geomDistance(const mjModel* m, const mjData* d, const mjpPlugin* p
       return mju_norm3(b) + mju_min(mju_max(a[0], mju_max(a[1], a[2])), 0);
     }
     radialField3d(b, a, x, size);
-    mjtNum t[3];
+    Vec3<mjtNum> t;
     t[0] = -a[0] / mju_abs(b[0]);
     t[1] = -a[1] / mju_abs(b[1]);
     t[2] = -a[2] / mju_abs(b[2]);
@@ -298,7 +299,8 @@ static mjtNum geomDistance(const mjModel* m, const mjData* d, const mjpPlugin* p
 static void geomGradient(mjtNum gradient[3], const mjModel* m, const mjData* d,
                          const mjpPlugin* p, int i, const mjtNum x[3],
                          mjtGeom type) {
-  mjtNum a[3], b[3], c, e;
+  Vec3<mjtNum> a, b;
+  mjtNum c, e;
   const mjtNum* size = m->geom_size+3*i;
 
   // see https://iquilezles.org/articles/distfunctions/
@@ -359,7 +361,7 @@ static void geomGradient(mjtNum gradient[3], const mjModel* m, const mjData* d,
     mjtNum k1 = mju_norm3(b);
     mjtNum invK0 = 1. / k0;
     mjtNum invK1 = 1. / k1;
-    mjtNum gk0[3] = {b[0]*invK0, b[1]*invK0, b[2]*invK0};
+    Vec3<mjtNum> gk0 = {b[0]*invK0, b[1]*invK0, b[2]*invK0};
     mjtNum gk1[3] = {b[0]*invK1/(size[0]*size[0]),
                      b[1]*invK1/(size[1]*size[1]),
                      b[2]*invK1/(size[2]*size[2])};
@@ -422,7 +424,7 @@ static void geomGradient(mjtNum gradient[3], const mjModel* m, const mjData* d,
 
 // signed distance function
 mjtNum mjc_distance(const mjModel* m, const mjData* d, const mjSDF* s, const mjtNum x[3]) {
-  mjtNum y[3];
+  Vec3<mjtNum> y;
 
   switch (s->type) {
   case mjSDFTYPE_SINGLE:
@@ -459,9 +461,9 @@ mjtNum mjc_distance(const mjModel* m, const mjData* d, const mjSDF* s, const mjt
 // gradient of sdf
 void mjc_gradient(const mjModel* m, const mjData* d, const mjSDF* s,
                   mjtNum gradient[3], const mjtNum x[3]) {
-  mjtNum y[3];
+  Vec3<mjtNum> y;
   const mjtNum* point[2] = {x, y};
-  mjtNum grad1[3], grad2[3];
+  Vec3<mjtNum> grad1, grad2;
 
   switch (s->type) {
   case mjSDFTYPE_INTERSECTION: {
@@ -531,7 +533,8 @@ const mjpPlugin* mjc_getSDF(const mjModel* m, int id) {
 static void mapPose(const mjtNum xpos1[3], const mjtNum xquat1[4],
                     const mjtNum xpos2[3], const mjtNum xquat2[4],
                     mjtNum pos12[3], mjtNum mat12[9]) {
-  mjtNum negpos[3], negquat[4], quat12[4];
+  Vec3<mjtNum> negpos;
+  mjtNum negquat[4], quat12[4];
   mju_negPose(negpos, negquat, xpos2, xquat2);
   mju_mulPose(pos12, quat12, negpos, negquat, xpos1, xquat1);
   mju_quat2Mat(mat12, quat12);
@@ -566,7 +569,7 @@ static int addPreContact(mjtNum* points, mjPreContact* con, const mjtNum x[3],
   }
 
   // compute normal in local coordinates
-  mjtNum norm[3], vec[3];
+  Vec3<mjtNum> norm, vec;
   mjc_gradient(m, d, s, norm, x);
 
   // validate normal - skip if gradient is degenerate (zero or near-zero)
@@ -616,7 +619,8 @@ static int addContact(mjtNum* points, mjContact* con, const mjtNum x[3],
 static mjtNum stepFrankWolfe(mjtNum x[3], const mjtNum* corners, int ncorners,
                              const mjModel* m, const mjSDF* sdf, const mjData* d) {
   for (int step=0; step < m->opt.sdf_iterations; step++) {
-    mjtNum best = mjMAXVAL, fun, s[3], grad[3];
+    Vec3<mjtNum> s, grad;
+    mjtNum best = mjMAXVAL, fun;
 
     // evaluate gradient
     mjc_gradient(m, d, sdf, grad, x);
@@ -651,7 +655,7 @@ static mjtNum stepGradient(mjtNum x[3], const mjModel* m, const mjSDF* s,
   mjtNum dist = mjMAXVAL;
 
   for (int step=0; step < niter; step++) {
-    mjtNum grad[3];
+    Vec3<mjtNum> grad;
     mjtNum alpha = 2.;  // initial line search factor scaling the gradient
                         // the units of the gradient depend on s->type
 
@@ -696,8 +700,9 @@ static mjtNum stepGradient(mjtNum x[3], const mjModel* m, const mjSDF* s,
 static int triangleIntersect(const mjtNum triangle[9], const mjModel* m,
                              const mjSDF* sdf, const mjData* d) {
   mjtNum edges[6];
-  mjtNum normal[3], center[3];
-  mjtNum v[9], cross[9], p[3];
+  Vec3<mjtNum> normal, center;
+  Vec3<mjtNum> p;
+  mjtNum v[9], cross[9];
   mjtNum kDistanceScl = 10.;
   mjtNum kMinHeight = 0.1;  // minimum tetrahedron height to avoid degeneracy
 
@@ -768,7 +773,7 @@ static int triangleIntersect(const mjtNum triangle[9], const mjModel* m,
 static int boxIntersect(const mjtNum bvh[6], const mjtNum offset[3],
                         const mjtNum rotation[9], const mjModel* m,
                         const mjSDF* s, const mjData* d) {
-  mjtNum candidate[3];
+  Vec3<mjtNum> candidate;
   mjtNum r = mju_norm3(bvh+3);
 
   mju_mulMatVec3(candidate, rotation, bvh);
@@ -839,7 +844,8 @@ static int selectFPS(const mjtNum* candidate, const mjtNum* dist, int ncandidate
 static void processSdfCorners(const mjtNum corners[9], const mjModel* m, const mjData* d,
                               const mjSDF* sdf, int nstartpts,
                               mjtNum* candidate, mjtNum* dist, int* ncandidate) {
-  mjtNum x[3], depth;
+  Vec3<mjtNum> x;
+  mjtNum depth;
 
   // stricter culling using triangle circumsphere
   if (!triangleIntersect(corners, m, sdf, d)) {
@@ -995,7 +1001,8 @@ int mjc_MeshSDF(const mjModel* m, mjData* d, mjPreContact* con, int g1, int g2, 
   const mjtNum* pos2 = d->geom_xpos + 3*g2;
   const mjtNum* mat2 = d->geom_xmat + 9*g2;
 
-  mjtNum offset[3], rotation[9];
+  Vec3<mjtNum> offset;
+  mjtNum rotation[9];
   mjtNum points[3*mjMAXCONPAIR], dist2[mjMAXCONPAIR], candidate[3*mjMAXCONPAIR];
   int cnt = 0, ncandidate = 0;
 
@@ -1077,7 +1084,8 @@ int mjc_SDF(const mjModel* m, mjData* d, mjPreContact* con, int g1, int g2, mjtN
   const mjtNum* size2 = m->geom_aabb + 6*g2;
 
   int cnt = 0;
-  mjtNum x[3], y[3], dist2, vec1[3], vec2[3];
+  Vec3<mjtNum> x, y, vec1, vec2;
+  mjtNum dist2;
   mjtNum aabb1[6] = {mjMAXVAL, mjMAXVAL, mjMAXVAL, -mjMAXVAL, -mjMAXVAL, -mjMAXVAL};
   mjtNum aabb2[6] = {mjMAXVAL, mjMAXVAL, mjMAXVAL, -mjMAXVAL, -mjMAXVAL, -mjMAXVAL};
   mjtNum aabb[6]  = {mjMAXVAL, mjMAXVAL, mjMAXVAL, -mjMAXVAL, -mjMAXVAL, -mjMAXVAL};
@@ -1089,8 +1097,10 @@ int mjc_SDF(const mjModel* m, mjData* d, mjPreContact* con, int g1, int g2, mjtN
 
   // compute transformations from/to g1 to/from g2
   mjtNum quat1[4], quat2[4];
-  mjtNum offset21[3], rotation21[9], rotation12[9];
-  mjtNum offset12[3], offset2[3], rotation2[9];
+  Vec3<mjtNum> offset21;
+  mjtNum rotation21[9], rotation12[9];
+  Vec3<mjtNum> offset12, offset2;
+  mjtNum rotation2[9];
   mju_mat2Quat(quat1, mat1);
   mju_mat2Quat(quat2, mat2);
   mapPose(pos1, quat1, pos1, quat1, offset2, rotation2);
@@ -1309,8 +1319,10 @@ int mjc_FlexSDF(const mjModel* m, const mjData* d, mjContact* con,
   mju_mat2Quat(sdf_quat, sdf_mat);
 
   // compute world-to-SDF transform (once for entire flex)
-  mjtNum rotation[9], offset[3];
-  mjtNum world_origin[3] = {0, 0, 0}, world_quat[4] = {1, 0, 0, 0};
+  Vec3<mjtNum> offset;
+  mjtNum rotation[9];
+  Vec3<mjtNum> world_origin = {0, 0, 0};
+  mjtNum world_quat[4] = {1, 0, 0, 0};
   mapPose(world_origin, world_quat, sdf_pos, sdf_quat, offset, rotation);
 
   // get flex element and vertex data

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "user/user_objects.h"
+#include "cc/vec.h"
 
 #include <algorithm>
 #include <array>
@@ -3853,11 +3854,11 @@ void mjCGeom::SetFluidCoefs(void) {
   const double Izfac = pow2(dx*dx - dy*dy) * std::abs(ky - kx) / std::max(
     mjEPS, std::abs(2*(dx*dx - dy*dy) + (dx*dx + dy*dy)*(kx - ky)));
 
-  mjtNum virtual_mass[3];
+  Vec3<mjtNum> virtual_mass;
   virtual_mass[0] = volume * kx / std::max(mjEPS, 2-kx);
   virtual_mass[1] = volume * ky / std::max(mjEPS, 2-ky);
   virtual_mass[2] = volume * kz / std::max(mjEPS, 2-kz);
-  mjtNum virtual_inertia[3];
+  Vec3<mjtNum> virtual_inertia;
   virtual_inertia[0] = volume*Ixfac/5;
   virtual_inertia[1] = volume*Iyfac/5;
   virtual_inertia[2] = volume*Izfac/5;

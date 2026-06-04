@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_collision_primitive.h"
+#include "cc/vec.h"
 
 #include <mujoco/mjdata.h>
 #include <mujoco/mjmodel.h>
@@ -34,7 +35,7 @@ static int mjraw_PlaneSphere(mjPreContact* con, mjtNum margin,
   con[0].normal[2] = mat1[8];
 
   // compute distance, return if too large
-  mjtNum tmp[3] = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
+  Vec3<mjtNum> tmp = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
   mjtNum cdist = mju_dot3(tmp, con[0].normal);
   if (cdist > margin + size2[0]) {
     return 0;
@@ -73,11 +74,11 @@ int mjc_PlaneCapsule(const mjModel* m, mjData* d, mjPreContact* con, int g1, int
   const mjtNum* size2 = m->geom_size + 3*g2;
 
   // get capsule axis, segment = scaled axis
-  mjtNum axis[3] = {mat2[2], mat2[5], mat2[8]};
-  mjtNum segment[3] = {size2[1]*axis[0], size2[1]*axis[1], size2[1]*axis[2]};
+  Vec3<mjtNum> axis = {mat2[2], mat2[5], mat2[8]};
+  Vec3<mjtNum> segment = {size2[1]*axis[0], size2[1]*axis[1], size2[1]*axis[2]};
 
   // get point 1, do sphere-plane test
-  mjtNum endpoint[3];
+  Vec3<mjtNum> endpoint;
   mju_add3(endpoint, pos2, segment);
   int n1 = mjraw_PlaneSphere(con, margin, pos1, mat1, size1, endpoint, mat2, size2);
 
@@ -106,8 +107,8 @@ int mjc_PlaneCylinder(const mjModel* m, mjData* d, mjPreContact* con, int g1, in
   const mjtNum* mat2 = d->geom_xmat + 9*g2;
   const mjtNum* size2 = m->geom_size + 3*g2;
 
-  mjtNum normal[3] = {mat1[2], mat1[5], mat1[8]};
-  mjtNum axis[3] = {mat2[2], mat2[5], mat2[8]};
+  Vec3<mjtNum> normal = {mat1[2], mat1[5], mat1[8]};
+  Vec3<mjtNum> axis = {mat2[2], mat2[5], mat2[8]};
 
   // project, make sure axis points towards plane
   mjtNum prjaxis = mju_dot3(normal, axis);
@@ -117,7 +118,7 @@ int mjc_PlaneCylinder(const mjModel* m, mjData* d, mjPreContact* con, int g1, in
   }
 
   // compute normal distance to cylinder center
-  mjtNum vec[3] = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
+  Vec3<mjtNum> vec = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
   mjtNum dist0 = mju_dot3(vec, normal);
 
   // remove component of -normal along axis, compute length
@@ -176,7 +177,7 @@ int mjc_PlaneCylinder(const mjModel* m, mjData* d, mjPreContact* con, int g1, in
   mjtNum prjvec1 = -prjvec*0.5;
   if (dist0 + prjaxis + prjvec1 <= margin) {
     // compute sideways vector: vec1
-    mjtNum vec1[3];
+    Vec3<mjtNum> vec1;
     mji_cross(vec1, vec, axis);
     mju_normalize3(vec1);
     mju_scl3(vec1, vec1, size2[0] * mju_sqrt(3.0) / 2);
@@ -215,21 +216,21 @@ int mjc_PlaneBox(const mjModel* m, mjData* d, mjPreContact* con, int g1, int g2,
   const mjtNum* size2 = m->geom_size + 3*g2;
 
   // get normal, difference between centers, normal distance
-  mjtNum norm[3] = {mat1[2], mat1[5], mat1[8]};
-  mjtNum dif[3] = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
+  Vec3<mjtNum> norm = {mat1[2], mat1[5], mat1[8]};
+  Vec3<mjtNum> dif = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
   mjtNum dist = mju_dot3(dif, norm);
 
   // test all corners, pick bottom 4
   int cnt = 0;
   for (int i=0; i < 8; i++) {
     // get corner in local coordinates
-    mjtNum vec[3];
+    Vec3<mjtNum> vec;
     vec[0] = (i&1 ? size2[0] : -size2[0]);
     vec[1] = (i&2 ? size2[1] : -size2[1]);
     vec[2] = (i&4 ? size2[2] : -size2[2]);
 
     // get corner in global coordinates relative to box center
-    mjtNum corner[3];
+    Vec3<mjtNum> corner;
     mju_mulMatVec3(corner, mat2, vec);
 
     // compute distance to plane, skip if too far or pointing up
@@ -263,7 +264,7 @@ static int mjraw_SphereSphere(mjPreContact* con, mjtNum margin,
                               const mjtNum* pos1, const mjtNum* mat1, const mjtNum* size1,
                               const mjtNum* pos2, const mjtNum* mat2, const mjtNum* size2) {
   // check bounding spheres (this is called from other functions)
-  mjtNum dif[3] = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
+  Vec3<mjtNum> dif = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
   mjtNum cdist_sqr = mju_dot3(dif, dif);
   mjtNum min_dist = margin + size1[0] + size2[0];
   if (cdist_sqr > min_dist*min_dist) {
@@ -278,8 +279,8 @@ static int mjraw_SphereSphere(mjPreContact* con, mjtNum margin,
   // if centers are the same, norm = cross-product of z axes
   //  if z axes are parallel, norm = [1;0;0]
   if (len < mjMINVAL) {
-    mjtNum axis1[3] = {mat1[2], mat1[5], mat1[8]};
-    mjtNum axis2[3] = {mat2[2], mat2[5], mat2[8]};
+    Vec3<mjtNum> axis1 = {mat1[2], mat1[5], mat1[8]};
+    Vec3<mjtNum> axis2 = {mat2[2], mat2[5], mat2[8]};
     mji_cross(con[0].normal, axis1, axis2);
     mju_normalize3(con[0].normal);
   }
@@ -315,10 +316,10 @@ int mjraw_SphereCapsule(mjPreContact* con, mjtNum margin,
                         const mjtNum* pos2, const mjtNum* mat2, const mjtNum* size2) {
   // get capsule length and axis
   mjtNum len = size2[1];
-  mjtNum axis[3] = {mat2[2], mat2[5], mat2[8]};
+  Vec3<mjtNum> axis = {mat2[2], mat2[5], mat2[8]};
 
   // find projection, clip to segment
-  mjtNum vec[3] = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
+  Vec3<mjtNum> vec = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
   mjtNum x = mju_clip(mju_dot3(axis, vec), -len, len);
 
   // find nearest point on segment, do sphere-sphere test
@@ -354,12 +355,12 @@ int mjc_SphereCylinder(const mjModel* m, mjData* d, mjPreContact* con, int g1, i
   // get cylinder sizes and axis
   mjtNum radius = size2[0];
   mjtNum height = size2[1];
-  mjtNum axis[3] = {mat2[2], mat2[5], mat2[8]};
+  Vec3<mjtNum> axis = {mat2[2], mat2[5], mat2[8]};
 
   // find sphere projection onto cylinder axis and plane
-  mjtNum vec[3] = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
+  Vec3<mjtNum> vec = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
   mjtNum x = mju_dot3(axis, vec);
-  mjtNum a_proj[3], p_proj[3];
+  Vec3<mjtNum> a_proj, p_proj;
   mji_scl3(a_proj, axis, x);
   mji_sub3(p_proj, vec, a_proj);
   mjtNum p_proj_sqr = mju_dot3(p_proj, p_proj);
@@ -391,7 +392,7 @@ int mjc_SphereCylinder(const mjModel* m, mjData* d, mjPreContact* con, int g1, i
       -mat2[6], mat2[7], -mat2[8]
     };
     const mjtNum* mat_cap;
-    mjtNum pos_cap[3];
+    Vec3<mjtNum> pos_cap;
     if (x > 0) {  // top cap
       mju_addScl3(pos_cap, pos2, axis, height);
       mat_cap = mat2;
@@ -426,9 +427,9 @@ int mjraw_CapsuleCapsule(mjPreContact* con, mjtNum margin,
                          const mjtNum* pos1, const mjtNum* mat1, const mjtNum* size1,
                          const mjtNum* pos2, const mjtNum* mat2, const mjtNum* size2) {
   // get capsule axes (scaled) and center difference
-  mjtNum axis1[3] = {mat1[2] * size1[1], mat1[5] * size1[1], mat1[8] * size1[1]};
-  mjtNum axis2[3] = {mat2[2] * size2[1], mat2[5] * size2[1], mat2[8] * size2[1]};
-  mjtNum dif[3] = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
+  Vec3<mjtNum> axis1 = {mat1[2] * size1[1], mat1[5] * size1[1], mat1[8] * size1[1]};
+  Vec3<mjtNum> axis2 = {mat2[2] * size2[1], mat2[5] * size2[1], mat2[8] * size2[1]};
+  Vec3<mjtNum> dif = {pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]};
 
   // compute matrix coefficients and determinant
   mjtNum ma =  mju_dot3(axis1, axis1);
@@ -460,7 +461,7 @@ int mjraw_CapsuleCapsule(mjPreContact* con, mjtNum margin,
     }
 
     // find nearest points, do sphere-sphere test
-    mjtNum vec1[3], vec2[3];
+    Vec3<mjtNum> vec1, vec2;
     mji_scl3(vec1, axis1, x1);
     mji_addTo3(vec1, pos1);
     mji_scl3(vec2, axis2, x2);
@@ -472,11 +473,11 @@ int mjraw_CapsuleCapsule(mjPreContact* con, mjtNum margin,
   // parallel axes
   else {
     // x1 = 1
-    mjtNum vec1[3];
+    Vec3<mjtNum> vec1;
     mji_add3(vec1, pos1, axis1);
     mjtNum x2 = mju_clip((v - mb) / mc, -1, 1);
 
-    mjtNum vec2[3];
+    Vec3<mjtNum> vec2;
     mji_scl3(vec2, axis2, x2);
     mji_addTo3(vec2, pos2);
     int n1 = mjraw_SphereSphere(con, margin, vec1, mat1, size1, vec2, mat2, size2);
@@ -567,15 +568,15 @@ int mjraw_SphereTriangle(mjContact* con, mjtNum margin,
                          const mjtNum* s, mjtNum rs,
                          const mjtNum* t1, const mjtNum* t2, const mjtNum* t3, mjtNum rt) {
   mjtNum rbound = margin + rs + rt;
-  mjtNum X[3];
+  Vec3<mjtNum> X;
 
   // make t1 the origin: triangle is (O,A,B); sphere center is S
-  mjtNum S[3] = { s[0]-t1[0],  s[1]-t1[1],  s[2]-t1[2]};
-  mjtNum A[3] = {t2[0]-t1[0], t2[1]-t1[1], t2[2]-t1[2]};
-  mjtNum B[3] = {t3[0]-t1[0], t3[1]-t1[1], t3[2]-t1[2]};
+  Vec3<mjtNum> S = { s[0]-t1[0],  s[1]-t1[1],  s[2]-t1[2]};
+  Vec3<mjtNum> A = {t2[0]-t1[0], t2[1]-t1[1], t2[2]-t1[2]};
+  Vec3<mjtNum> B = {t3[0]-t1[0], t3[1]-t1[1], t3[2]-t1[2]};
 
   // N is normal to triangle plane
-  mjtNum N[3];
+  Vec3<mjtNum> N;
   mji_cross(N, A, B);
   mju_normalize3(N);
 
@@ -586,11 +587,11 @@ int mjraw_SphereTriangle(mjContact* con, mjtNum margin,
   }
 
   // P is projection of S in triangle plane
-  mjtNum P[3];
+  Vec3<mjtNum> P;
   mji_addScl3(P, S, N, -dstS);
 
   // construct orthogonal axes (V1~A, V2) of triangle plane
-  mjtNum V1[3], V2[3];
+  Vec3<mjtNum> V1, V2;
   mji_copy3(V1, A);
   mjtNum lenA = mju_normalize3(V1);
   mji_cross(V2, N, A);
@@ -616,7 +617,8 @@ int mjraw_SphereTriangle(mjContact* con, mjtNum margin,
   // p is not inside triangle
   else {
     // find nearest point to p on triangle edges (o,a), (a,b), (b,o)
-    mjtNum x[3][2], dstx[3];
+    Vec3<mjtNum> dstx;
+    mjtNum x[3][2];
     dstx[0] = pointSegment(x[0], p, o, a);
     dstx[1] = pointSegment(x[1], p, a, b);
     dstx[2] = pointSegment(x[2], p, b, o);
@@ -631,7 +633,7 @@ int mjraw_SphereTriangle(mjContact* con, mjtNum margin,
 
   // X is now the nearest point to S within the 3D triangle (O,A,B)
   // compute contact normal and distance
-  mjtNum nrm[3] = {X[0]-S[0], X[1]-S[1], X[2]-S[2]};
+  Vec3<mjtNum> nrm = {X[0]-S[0], X[1]-S[1], X[2]-S[2]};
   mjtNum dst = mju_normalize3(nrm);
 
   // exit if too far
@@ -658,7 +660,7 @@ int mjraw_BoxTriangle(mjContact* con, mjtNum margin, const mjtNum* pos,
 
   for (int i = 0; i < 3; i++) {
     // map vertex to box local frame
-    mjtNum diff[3], local[3];
+    Vec3<mjtNum> diff, local;
     mju_sub3(diff, vert[i], pos);
     mju_mulMatTVec3(local, mat, diff);
 
@@ -694,7 +696,7 @@ int mjraw_BoxTriangle(mjContact* con, mjtNum margin, const mjtNum* pos,
     // create contact
     if (cnt < mjMAXCONPAIR) {
       // normal in local frame
-      mjtNum nrm_local[3] = {0, 0, 0};
+      Vec3<mjtNum> nrm_local = {0, 0, 0};
       nrm_local[maxaxis] = (local[maxaxis] > 0 ? 1 : -1);
 
       // normal in global frame (from Box to Triangle)
@@ -721,13 +723,13 @@ int mjraw_BoxTriangle(mjContact* con, mjtNum margin, const mjtNum* pos,
     }
 
     // get corner in local coordinates
-    mjtNum vec[3];
+    Vec3<mjtNum> vec;
     vec[0] = (i & 1 ? size[0] : -size[0]);
     vec[1] = (i & 2 ? size[1] : -size[1]);
     vec[2] = (i & 4 ? size[2] : -size[2]);
 
     // get corner in global coordinates relative to box center
-    mjtNum corner[3];
+    Vec3<mjtNum> corner;
     mju_mulMatVec3(corner, mat, vec);
     mju_addTo3(corner, pos);
 
@@ -750,8 +752,8 @@ int mjraw_CapsuleTriangle(mjContact* con, mjtNum margin, const mjtNum* pos,
   int cnt = 0;
   mjtNum radius = size[0];
   mjtNum len = size[1];
-  mjtNum axis[3] = {mat[2], mat[5], mat[8]};
-  mjtNum p1[3], p2[3];
+  Vec3<mjtNum> axis = {mat[2], mat[5], mat[8]};
+  Vec3<mjtNum> p1, p2;
 
   // capsule endpoints
   mju_addScl3(p1, pos, axis, -len);
@@ -767,7 +769,7 @@ int mjraw_CapsuleTriangle(mjContact* con, mjtNum margin, const mjtNum* pos,
   const mjtNum* vert[3] = {t1, t2, t3};
   for (int i = 0; i < 3; i++) {
     // point-segment distance
-    mjtNum vec[3], ab[3];
+    Vec3<mjtNum> vec, ab;
     mju_sub3(vec, vert[i], p1);
     mju_sub3(ab, p2, p1);
     mjtNum t = mju_dot3(vec, ab) / (4 * len * len);  // ab length is 2*len
@@ -778,7 +780,7 @@ int mjraw_CapsuleTriangle(mjContact* con, mjtNum margin, const mjtNum* pos,
     }
 
     // closest point on segment
-    mjtNum closest[3];
+    Vec3<mjtNum> closest;
     mji_addScl3(closest, p1, ab, t);
 
     // distance vector

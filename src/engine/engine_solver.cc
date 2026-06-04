@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_solver.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -949,7 +950,7 @@ typedef struct {
 
   // globals
   mjtNum cost;            // constraint + Gauss cost
-  mjtNum quadGauss[3];    // quadratic polynomial for Gauss cost
+  Vec3<mjtNum> quadGauss;    // quadratic polynomial for Gauss cost
   mjtNum scale;           // scaling factor for improvement and gradient
   int nactive;            // number of active constraints
   int ncone;              // number of contacts in cone state
@@ -1514,7 +1515,7 @@ static void PrimalEval(mjPrimalContext* ctx, mjPrimalPnt* p) {
   mjtNum deriv[2] = {0, 0};
 
   // init quad with Gauss, shifted: drop quadGauss[0]
-  mjtNum quadTotal[3] = {0, ctx->quadGauss[1], ctx->quadGauss[2]};
+  Vec3<mjtNum> quadTotal = {0, ctx->quadGauss[1], ctx->quadGauss[2]};
 
   // process constraints
   for (int i=0; i < nefc; i++) {

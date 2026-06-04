@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_vis_visualize.h"
+#include "cc/vec.h"
 
 #include "engine/engine_inline.h"
 
@@ -210,9 +211,9 @@ static void addTriangle(mjvScene* scn, const mjtNum v0[3], const mjtNum v1[3],
   if (!thisgeom) {
     return;
   }
-  mjtNum e1[3] =  {v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]};
-  mjtNum e2[3] =  {v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]};
-  mjtNum normal[3];
+  Vec3<mjtNum> e1 =  {v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]};
+  Vec3<mjtNum> e2 =  {v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]};
+  Vec3<mjtNum> normal;
   mju_cross(normal, e1, e2);
   mjtNum lengths[3] = {mju_normalize3(e1), mju_normalize3(e2), mju_normalize3(normal)};
   mjtNum xmat[9] = {e1[0], e2[0], normal[0],
@@ -256,7 +257,8 @@ static void setMaterial(const mjModel* m, mjvGeom* geom, int matid, const float*
 //  assume that mjv_initGeom was already called to set all other properties
 void mjv_connector(mjvGeom* geom, int type, mjtNum width,
                    const mjtNum from[3], const mjtNum to[3]) {
-  mjtNum quat[4], mat[9], dif[3] = {to[0]-from[0], to[1]-from[1], to[2]-from[2]};
+  Vec3<mjtNum> dif = {to[0]-from[0], to[1]-from[1], to[2]-from[2]};
+  mjtNum quat[4], mat[9];
 
   // require connector-compatible type
   if (type != mjGEOM_CAPSULE && type != mjGEOM_CYLINDER &&
@@ -403,16 +405,16 @@ void addFrame(mjvScene* scn, int objid, const mjtNum pos[3], const mjtNum rot[9]
               float width) {
   // draw separate geoms for each axis
   for (int j=0; j < 3; j++) {
-    mjtNum axis[3];
+    Vec3<mjtNum> axis;
     for (int k=0; k < 3; k++) {
       axis[k] = (j == k ? length : 0);
     }
 
-    mjtNum vec[3];
+    Vec3<mjtNum> vec;
     mju_mulMatVec3(vec, rot, axis);
 
     // create a cylinder
-    mjtNum to[3];
+    Vec3<mjtNum> to;
     mju_add3(to, pos, vec);
 
     mjvGeom* thisgeom = acquireGeom(scn, objid, mjCAT_DECOR, mjOBJ_UNKNOWN);
@@ -572,7 +574,8 @@ static void addContactGeoms(const mjModel* m, mjData* d, const mjvOption* vopt, 
   }
 
   int objtype = mjOBJ_UNKNOWN, category = mjCAT_DECOR;
-  mjtNum mat[9], tmp[9], vec[3], frc[3], confrc[6];
+  Vec3<mjtNum> vec, frc;
+  mjtNum mat[9], tmp[9], confrc[6];
   mjtNum framewidth, framelength, scl = m->stat.meansize;
   mjContact* con;
   mjvGeom* thisgeom;
@@ -731,7 +734,7 @@ static void addContactGeoms(const mjModel* m, mjData* d, const mjvOption* vopt, 
         }
 
         mjtNum* from = con->pos;
-        mjtNum to[3];
+        Vec3<mjtNum> to;
         mju_add3(to, from, vec);
         mjv_connector(thisgeom,
                       bf[0] > 0 && bf[1] > 0 && !split ? mjGEOM_ARROW2 : mjGEOM_ARROW,
@@ -997,7 +1000,7 @@ static void addGeomGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
       // re-center infinite plane
       if (m->geom_size[3*i] <= 0 || m->geom_size[3*i+1] <= 0) {
         // vec = headpos - geompos
-        mjtNum vec[3];
+        Vec3<mjtNum> vec;
         for (int j=0; j < 3; j++) {
           vec[j] = 0.5*(scn->camera[0].pos[j] + scn->camera[1].pos[j]) - d->geom_xpos[3*i+j];
         }
@@ -1211,7 +1214,7 @@ static void addSpatialTendonGeoms(const mjModel* m, mjData* d, const mjvOption* 
     // special case handling of string-like tendons under gravity
     else {
       // two hanging points: x0, x1
-      mjtNum x0[3], x1[3];
+      Vec3<mjtNum> x0, x1;
       mju_copy3(x0, d->wrap_xpos + 3*d->ten_wrapadr[i]);
       mju_copy3(x1, d->wrap_xpos + 3*d->ten_wrapadr[i] + 3);
 
@@ -1269,13 +1272,13 @@ static void addSliderCrankGeoms(const mjModel* m, mjData* d, const mjvOption* vo
       int j = m->actuator_trnid[2*i];                 // crank
       int k = m->actuator_trnid[2*i+1];               // slider
       mjtNum rod = m->actuator_cranklength[i];
-      mjtNum axis[3];
+      Vec3<mjtNum> axis;
       axis[0] = d->site_xmat[9*k+2];
       axis[1] = d->site_xmat[9*k+5];
       axis[2] = d->site_xmat[9*k+8];
 
       // compute crank length
-      mjtNum vec[3];
+      Vec3<mjtNum> vec;
       mju_sub(vec, d->site_xpos+3*j, d->site_xpos+3*k, 3);
       mjtNum len = mju_dot3(vec, axis);
       mjtNum det = len*len + rod*rod - mju_dot3(vec, vec);
@@ -1287,7 +1290,7 @@ static void addSliderCrankGeoms(const mjModel* m, mjData* d, const mjvOption* vo
       len = len - mju_sqrt(det);
 
       // compute slider endpoint
-      mjtNum end[3];
+      Vec3<mjtNum> end;
       mju_scl3(end, axis, len);
       mju_addTo3(end, d->site_xpos+3*k);
 
@@ -1417,7 +1420,7 @@ static void addBodyBvhGeoms(const mjModel* m, mjData* d, const mjvOption* vopt, 
 
     // offset xpos with aabb center (not always at frame origin)
     const mjtNum* center = isleaf ? m->geom_aabb + 6*geomid : m->bvh_aabb + 6*i;
-    mjtNum pos[3];
+    Vec3<mjtNum> pos;
     mju_mulMatVec3(pos, xmat, center);
     mju_addTo3(pos, xpos);
 
@@ -1608,7 +1611,7 @@ static void addMeshBvhGeoms(const mjModel* m, mjData* d, const mjvOption* vopt, 
 
       // offset xpos with aabb center (not always at geom origin)
       const mjtNum* center = m->bvh_aabb + 6*i;
-      mjtNum pos[3];
+      Vec3<mjtNum> pos;
       mju_mulMatVec3(pos, xmat, center);
       mju_addTo3(pos, xpos);
 
@@ -1651,7 +1654,7 @@ static void addMeshOctreeGeoms(const mjModel* m, mjData* d, const mjvOption* vop
 
       // offset xpos with aabb center (not always at geom origin)
       const mjtNum* center = m->oct_aabb + 6*i;
-      mjtNum pos[3];
+      Vec3<mjtNum> pos;
       mju_mulMatVec3(pos, xmat, center);
       mju_addTo3(pos, xpos);
 
@@ -1708,7 +1711,7 @@ static void addTactileSensorGeoms(const mjModel* m, mjData* d, const mjvOption* 
 
         // color
         float rgba[4] = {0, 0, 0, 1.0};
-        mjtNum nval[3] = {0, 0, 0};
+        Vec3<mjtNum> nval = {0, 0, 0};
         for (int r = 0; r < mjMIN(nchannel, 3); r++) {
           for (int j = 0; j < 3; j++) {
             mjtNum val = sensordata[r*m->mesh_vertnum[mesh_id] + face[3*i+j]];
@@ -1759,7 +1762,7 @@ static void addInertiaGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
     mjtNum mass = m->body_mass[i];
     mjtNum scale_inertia = ellipsoid ? mju_sqrt(5) : mju_sqrt(3);
 
-    mjtNum sz[3];
+    Vec3<mjtNum> sz;
     sz[0] = mju_sqrt((Iyy + Izz - Ixx) / (2 * mass)) * scale_inertia;
     sz[1] = mju_sqrt((Ixx + Izz - Iyy) / (2 * mass)) * scale_inertia;
     sz[2] = mju_sqrt((Ixx + Iyy - Izz) / (2 * mass)) * scale_inertia;
@@ -1817,12 +1820,12 @@ static void addPerturbGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
     }
 
     // compute selection point in world coordinates
-    mjtNum selpos[3];
+    Vec3<mjtNum> selpos;
     mju_mulMatVec3(selpos, d->xmat+9*pert->select, pert->localpos);
     mju_addTo3(selpos, d->xpos+3*pert->select);
 
     // construct geom
-    mjtNum sz[3];
+    Vec3<mjtNum> sz;
     sz[0] = scl * m->vis.scale.constraint;
     mjv_connector(thisgeom, mjGEOM_CAPSULE, sz[0], selpos, pert->refselpos);
 
@@ -1866,8 +1869,8 @@ static void addPerturbGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
               (pert->active2 & mjPERT_ROTATE) > 0);
 
     // construct geom: if body i has a collision aabb, use that
-    mjtNum pos[3] = {0};
-    mjtNum sz[3];
+    Vec3<mjtNum> pos = {0};
+    Vec3<mjtNum> sz;
     if (m->body_bvhnum[pert->select]) {
       mjtNum* aabb = m->bvh_aabb+6*m->body_bvhadr[pert->select];
       mju_copy3(sz, aabb+3);
@@ -1929,7 +1932,7 @@ static void addSelectionPointGeoms(const mjModel* m, mjData* d, const mjvOption*
   const float scl = m->stat.meansize;
 
   // compute selection point in world coordinates
-  mjtNum selpos[3];
+  Vec3<mjtNum> selpos;
   mju_mulMatVec3(selpos, d->xmat+9*pert->select, pert->localpos);
   mju_addTo3(selpos, d->xpos+3*pert->select);
 
@@ -2006,7 +2009,7 @@ static void addJointGeoms(const mjModel* m, mjData* d, const mjvOption* vopt, mj
     // set type, size, pos, mat depending on joint type
     int j = m->jnt_bodyid[i];
     mjtNum* from;
-    mjtNum to[3];
+    Vec3<mjtNum> to;
     switch ((mjtJoint) m->jnt_type[i]) {
     case mjJNT_FREE:
       thisgeom->type = mjGEOM_BOX;
@@ -2078,7 +2081,7 @@ static void addActuatorGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
     }
 
     // determine extended range
-    mjtNum rng[3] = {-1, 0, +1};
+    Vec3<mjtNum> rng = {-1, 0, +1};
     mjtNum rmin = -1, rmax = 1, act = 0;
     if (m->actuator_ctrllimited[i]) {
       rmin = m->actuator_ctrlrange[2*i];
@@ -2149,7 +2152,7 @@ static void addActuatorGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
       }
 
       // site actuators
-      mjtNum sz[3];
+      Vec3<mjtNum> sz;
       if (m->actuator_trntype[i] == mjTRN_SITE) {
         // inflate sizes by 5%
         mju_scl3(sz, m->site_size+3*j, 1.05);
@@ -2167,7 +2170,7 @@ static void addActuatorGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
 
         // make geom
         mjtNum* from = d->xanchor + 3*j;
-        mjtNum to[3];
+        Vec3<mjtNum> to;
         mju_addScl3(to, from, d->xaxis+3*j, sz[1]);
         mjv_connector(thisgeom, m->jnt_type[j] == mjJNT_SLIDE ? mjGEOM_ARROW : mjGEOM_ARROW1,
                       sz[0], from, to);
@@ -2212,7 +2215,7 @@ static void addActuatorGeoms(const mjModel* m, mjData* d, const mjvOption* vopt,
           }
 
           // inflate sizes by 5%
-          mjtNum sz[3];
+          Vec3<mjtNum> sz;
           mju_scl3(sz, m->geom_size+3*k, 1.05);
 
           // make geom
@@ -2321,7 +2324,7 @@ static void addCameraGeoms(const mjModel* m, mjData* d, const mjvOption* vopt, m
       // locals
       const float* rgba = m->vis.rgba.frustum;
       mjtNum vnear[4][3], vfar[4][3];
-      mjtNum center[3];
+      Vec3<mjtNum> center;
       mjtNum znear = m->vis.map.znear * m->stat.extent;
       mjtNum zfar = m->vis.scale.frustum * scl;
       float zver[2], zhor[2];
@@ -2464,7 +2467,7 @@ static void addLightGeoms(const mjModel* m, mjData* d, const mjvOption* vopt, mj
     mju_quat2Mat(mat, quat);
 
     // make light position: offset backward, to avoid casting shadow
-    mjtNum vec[3];
+    Vec3<mjtNum> vec;
     mju_addScl3(vec, d->light_xpos+3*i, d->light_xdir+3*i, -scl * m->vis.scale.light -0.0001);
 
     mjvGeom* thisgeom = acquireGeom(scn, i, mjCAT_DECOR, mjOBJ_LIGHT);
@@ -2597,7 +2600,7 @@ static void addRangefinderGeoms(const mjModel* m, mjData* d, const mjvOption* vo
         }
 
         // get point and draw line if dist is valid
-        mjtNum point[3] = {0};
+        Vec3<mjtNum> point = {0};
         if (dist >= 0) {
           mjtNum* origin = d->site_xpos + 3*objid;
           point[0] = origin[0] + d->site_xmat[9*objid+2]*dist;
@@ -2628,7 +2631,7 @@ static void addRangefinderGeoms(const mjModel* m, mjData* d, const mjvOption* vo
         int valid_point = dist >= 0 || point[0] || point[1] || point[2];
         if (valid_point && (dataspec & (1 << mjRAYDATA_NORMAL))) {
           const mjtNum* normal = ptr + offset[mjRAYDATA_NORMAL];
-          mjtNum to[3];
+          Vec3<mjtNum> to;
           mju_addScl3(to, point, normal, 2*framelength);
           addConnector(scn, mjGEOM_ARROW1, framewidth, point, to,
                        m->vis.rgba.rangefinder, i, mjCAT_DECOR, mjOBJ_SENSOR);
@@ -2660,12 +2663,12 @@ static void addRangefinderGeoms(const mjModel* m, mjData* d, const mjvOption* vo
             }
 
             // compute ray origin and direction
-            mjtNum origin[3], direction[3];
+            Vec3<mjtNum> origin, direction;
             mju_camPixelRay(origin, direction, cam_xpos, cam_xmat,
                             col, row, fx, fy, cx, cy, projection, ortho_extent);
 
             // get point and draw line if dist is valid
-            mjtNum point[3] = {0};
+            Vec3<mjtNum> point = {0};
             if (dist >= 0) {
               mju_addScl3(point, origin, direction, dist);
               addConnector(scn, mjGEOM_LINE, 3, origin, point, m->vis.rgba.rangefinder,
@@ -2693,7 +2696,7 @@ static void addRangefinderGeoms(const mjModel* m, mjData* d, const mjvOption* vo
             int valid_point = dist >= 0 || point[0] || point[1] || point[2];
             if (valid_point && (dataspec & (1 << mjRAYDATA_NORMAL))) {
               const mjtNum* normal = ptr + offset[mjRAYDATA_NORMAL];
-              mjtNum to[3];
+              Vec3<mjtNum> to;
               mju_addScl3(to, point, normal, 2*framelength);
               addConnector(scn, mjGEOM_ARROW1, framewidth, point, to,
                            m->vis.rgba.rangefinder, i, mjCAT_DECOR, mjOBJ_SENSOR);
@@ -2738,9 +2741,9 @@ static void addExternalPerturbGeoms(const mjModel* m, mjData* d, const mjvOption
     mjtNum* from = d->xipos+3*i;
 
     // map force to spatial vector in world frame
-    mjtNum vec[3];
+    Vec3<mjtNum> vec;
     mju_scl3(vec, xfrc, m->vis.map.force/m->stat.meanmass);
-    mjtNum to[3];
+    Vec3<mjtNum> to;
     mju_add3(to, from, vec);
 
     addConnector(scn, mjGEOM_ARROW, m->vis.scale.forcewidth * scl, from, to,
@@ -2761,7 +2764,7 @@ static void addConstraintGeoms(const mjModel* m, mjData* d, const mjvOption* vop
     int is_connect = m->eq_type[i] == mjEQ_CONNECT;
     if (d->eq_active[i] && (is_connect || is_weld)) {
       // compute endpoints in global coordinates
-      mjtNum vec[3], end[3];
+      Vec3<mjtNum> vec, end;
       mjtNum *xmat_j, *xmat_k;
       int j = m->eq_obj1id[i], k = m->eq_obj2id[i];
       if (m->eq_objtype[i] == mjOBJ_SITE) {
@@ -2779,7 +2782,7 @@ static void addConstraintGeoms(const mjModel* m, mjData* d, const mjvOption* vop
       }
 
       // construct geom
-      mjtNum sz[3];
+      Vec3<mjtNum> sz;
       sz[0] = scl * m->vis.scale.constraint;
 
       mjvGeom* thisgeom = acquireGeom(scn, i, mjCAT_DECOR, mjOBJ_EQUALITY);
@@ -2885,7 +2888,7 @@ void mjv_makeLights(const mjModel* m, const mjData* d, mjvScene* scn) {
     thislight->range = 10;
 
     // compute head position and gaze direction in model space
-    mjtNum hpos[3], hfwd[3];
+    Vec3<mjtNum> hpos, hfwd;
     mjv_cameraInModel(hpos, hfwd, NULL, scn);
     mju_n2f(thislight->pos, hpos, 3);
     mju_n2f(thislight->dir, hfwd, 3);
@@ -2955,7 +2958,7 @@ void mjv_updateCamera(const mjModel* m, const mjData* d, mjvCamera* cam, mjvScen
   }
 
   // get camera frame
-  mjtNum headpos[3], forward[3], up[3], right[3];
+  Vec3<mjtNum> headpos, forward, up, right;
   mjv_cameraFrame(headpos, forward, up, right, d, cam);
 
   // get camera frustum
@@ -3022,14 +3025,14 @@ static void makeFace(float* _face, float* _normal,  mjtNum radius, const mjtNum*
   const mjtNum* v2 = vertxpos + 3*i2;
 
   // compute normal
-  mjtNum v01[3] = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
-  mjtNum v02[3] = {v2[0]-v0[0], v2[1]-v0[1], v2[2]-v0[2]};
-  mjtNum nrm[3];
+  Vec3<mjtNum> v01 = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
+  Vec3<mjtNum> v02 = {v2[0]-v0[0], v2[1]-v0[1], v2[2]-v0[2]};
+  Vec3<mjtNum> nrm;
   mju_cross(nrm, v01, v02);
   mju_normalize3(nrm);
 
   // set vertices: offset by radius*normal
-  mjtNum temp[3];
+  Vec3<mjtNum> temp;
   mju_addScl3(temp, v0, nrm, radius);
   mju_n2f(face, temp, 3);
   mju_addScl3(temp, v1, nrm, radius);
@@ -3051,9 +3054,9 @@ static void addNormal(mjtNum* vertnorm, const mjtNum* vertxpos,
   const mjtNum* v0 = vertxpos + 3*i0;
   const mjtNum* v1 = vertxpos + 3*i1;
   const mjtNum* v2 = vertxpos + 3*i2;
-  mjtNum v01[3] = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
-  mjtNum v02[3] = {v2[0]-v0[0], v2[1]-v0[1], v2[2]-v0[2]};
-  mjtNum nrm[3];
+  Vec3<mjtNum> v01 = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
+  Vec3<mjtNum> v02 = {v2[0]-v0[0], v2[1]-v0[1], v2[2]-v0[2]};
+  Vec3<mjtNum> nrm;
   mju_cross(nrm, v01, v02);
   mju_normalize3(nrm);
 
@@ -3079,9 +3082,9 @@ static void makeSmooth(float* _face, float* _normal, mjtNum radius, mjtByte flg_
     const mjtNum* v0 = vertxpos + 3*i0;
     const mjtNum* v1 = vertxpos + 3*i1;
     const mjtNum* v2 = vertxpos + 3*i2;
-    mjtNum v01[3] = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
-    mjtNum v02[3] = {v2[0]-v0[0], v2[1]-v0[1], v2[2]-v0[2]};
-    mjtNum nrm[3];
+    Vec3<mjtNum> v01 = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
+    Vec3<mjtNum> v02 = {v2[0]-v0[0], v2[1]-v0[1], v2[2]-v0[2]};
+    Vec3<mjtNum> nrm;
     mju_cross(nrm, v01, v02);
     mju_normalize3(nrm);
 
@@ -3121,8 +3124,8 @@ static void makeSide(float* _face, float* _normal, mjtNum radius,
   // compute normal
   const mjtNum* v0 = vertxpos + 3*i0;
   const mjtNum* v1 = vertxpos + 3*i1;
-  mjtNum v01[3] = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
-  mjtNum nrm[3];
+  Vec3<mjtNum> v01 = {v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]};
+  Vec3<mjtNum> nrm;
   mju_cross(nrm, v01, vertnorm+3*i1);
   if (radius < 0) {
     mju_scl3(nrm, nrm, -1);
@@ -3371,7 +3374,7 @@ void mjv_updateActiveSkin(const mjModel* m, const mjData* d, mjvScene* scn, cons
         mju_quat2Mat(rotate, quat);
 
         // compute translation
-        mjtNum translate[3];
+        Vec3<mjtNum> translate;
         mju_mulMatVec3(translate, rotate, bindpos);
         mju_sub3(translate, d->xpos+3*bodyid, translate);
 
@@ -3391,7 +3394,7 @@ void mjv_updateActiveSkin(const mjModel* m, const mjData* d, mjvScene* scn, cons
           };
 
           // transform
-          mjtNum pos1[3];
+          Vec3<mjtNum> pos1;
           mju_mulMatVec3(pos1, rotate, pos);
           mju_addTo3(pos1, translate);
 
@@ -3412,14 +3415,14 @@ void mjv_updateActiveSkin(const mjModel* m, const mjData* d, mjvScene* scn, cons
         };
 
         // get triangle edges
-        mjtNum vec01[3], vec02[3];
+        Vec3<mjtNum> vec01, vec02;
         for (int r=0; r < 3; r++) {
           vec01[r] = scn->skinvert[3*(vertadr+vid[1])+r] - scn->skinvert[3*(vertadr+vid[0])+r];
           vec02[r] = scn->skinvert[3*(vertadr+vid[2])+r] - scn->skinvert[3*(vertadr+vid[0])+r];
         }
 
         // compute face normal
-        mjtNum nrm[3];
+        Vec3<mjtNum> nrm;
         mju_cross(nrm, vec01, vec02);
 
         // add normal to each vertex with weight = area
@@ -3592,18 +3595,18 @@ int mjv_catenary(const mjtNum x0[3], const mjtNum x1[3], const mjtNum gravity[3]
   // tendon is shorter than length
   else {
     // normalized up vector
-    mjtNum up[3];
+    Vec3<mjtNum> up;
     mju_scl3(up, gravity, -1);
     mju_normalize3(up);
 
     // x0 to x1
-    mjtNum x01[3];
+    Vec3<mjtNum> x01;
     mju_sub3(x01, x1, x0);
 
     // make across orthonormal to up, points from x0 to x1
-    mjtNum across[3];
+    Vec3<mjtNum> across;
     mju_copy3(across, x01);
-    mjtNum tmp[3];
+    Vec3<mjtNum> tmp;
     mju_scl3(tmp, up, mju_dot3(up, across));
     mju_subFrom3(across, tmp);
     mjtNum norm = mju_normalize3(across);

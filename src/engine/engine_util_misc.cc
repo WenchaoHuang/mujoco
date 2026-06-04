@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_util_misc.h"
+#include "cc/vec.h"
 
 #include "engine/engine_inline.h"
 
@@ -289,7 +290,7 @@ mjtNum mju_wrap(mjtNum wpnt[6], const mjtNum x0[3], const mjtNum x1[3],
   }
 
   // map sites to wrap object's local frame
-  mjtNum tmp[3];
+  Vec3<mjtNum> tmp;
   mju_sub3(tmp, x0, xpos);
   mjtNum p[2][3];
   mju_mulMatTVec3(p[0], xmat, tmp);
@@ -309,7 +310,7 @@ mjtNum mju_wrap(mjtNum wpnt[6], const mjtNum x0[3], const mjtNum x1[3],
     mju_normalize3(axis[0]);
 
     // normal to p0-0-p1 plane = cross(p0, p1)
-    mjtNum normal[3];
+    Vec3<mjtNum> normal;
     mju_cross(normal, p[0], p[1]);
     mjtNum nrm = mju_normalize3(normal);
 
@@ -351,7 +352,8 @@ mjtNum mju_wrap(mjtNum wpnt[6], const mjtNum x0[3], const mjtNum x1[3],
   }
 
   // project points in 2D frame: p => d
-  mjtNum s[3], d[4], sd[2];
+  Vec3<mjtNum> s;
+  mjtNum d[4], sd[2];
   d[0] = mju_dot3(p[0], axis[0]);
   d[1] = mju_dot3(p[0], axis[1]);
   d[2] = mju_dot3(p[1], axis[0]);
@@ -454,7 +456,7 @@ void mju_geomSemiAxes(mjtNum semiaxes[3], const mjtNum size[3], mjtGeom type) {
 int mju_insideGeom(const mjtNum pos[3], const mjtNum mat[9], const mjtNum size[3], mjtGeom type,
                    const mjtNum point[3]) {
   // vector from geom to point
-  mjtNum vec[3];
+  Vec3<mjtNum> vec;
   mju_sub3(vec, point, pos);
 
   // quick return for spheres, frame rotation not required
@@ -463,7 +465,7 @@ int mju_insideGeom(const mjtNum pos[3], const mjtNum mat[9], const mjtNum size[3
   }
 
   // rotate into local frame
-  mjtNum plocal[3];
+  Vec3<mjtNum> plocal;
   mju_mulMatTVec3(plocal, mat, vec);
 
   // handle other geom types
@@ -514,7 +516,7 @@ void mju_camPixelRay(mjtNum origin[3], mjtNum direction[3],
     mju_copy3(origin, cam_xpos);
 
     // direction in camera frame: (x/fx, -y/fy, -1), then normalized
-    mjtNum dir_cam[3] = {px / fx, -py / fy, -1.0};
+    Vec3<mjtNum> dir_cam = {px / fx, -py / fy, -1.0};
     mju_mulMatVec3(direction, cam_xmat, dir_cam);
     mju_normalize3(direction);
   } else {
@@ -525,8 +527,8 @@ void mju_camPixelRay(mjtNum origin[3], mjtNum direction[3],
 
     // origin offset in camera frame (ortho_extent is full height, use half for each side)
     mjtNum half_extent = ortho_extent / 2;
-    mjtNum offset_cam[3] = {px / fx * half_extent, -py / fy * half_extent, 0};
-    mjtNum offset_world[3];
+    Vec3<mjtNum> offset_cam = {px / fx * half_extent, -py / fy * half_extent, 0};
+    Vec3<mjtNum> offset_world;
     mju_mulMatVec3(offset_world, cam_xmat, offset_cam);
     mju_add3(origin, cam_xpos, offset_world);
   }
@@ -542,7 +544,7 @@ void mju_camPixelRay(mjtNum origin[3], mjtNum direction[3],
 // evaluate the deformation gradient at p using the nodal dof values
 void mju_defGradient(mjtNum res[9], const mjtNum p[3], const mjtNum* dof, int order) {
   int idx = 0;
-  mjtNum gradient[3];
+  Vec3<mjtNum> gradient;
   mju_zero(res, 9);
   for (int i = 0; i <= order; i++) {
     for (int j = 0; j <= order; j++) {
@@ -744,7 +746,7 @@ void mju_flexGatherCellState(int order, int cy, int cz, int ci, int cj, int ck,
   }
 
   if (quat && xpos_c) {
-    mjtNum p[3] = {.5, .5, .5};
+    Vec3<mjtNum> p = {.5, .5, .5};
     flexInterpRotation(order, xpos_c, p, quat);
   }
 }
@@ -755,8 +757,8 @@ void mju_flexInterpRotation2D(int order, const mjtNum* xpos_f, int npe,
                               int axis0, int axis1, int normal_axis,
                               const mjtNum local[2], mjtNum* quat) {
   // compute 3x2 deformation gradient F at parametric point local
-  mjtNum t1[3] = {0, 0, 0};  // tangent along axis0
-  mjtNum t2[3] = {0, 0, 0};  // tangent along axis1
+  Vec3<mjtNum> t1 = {0, 0, 0};  // tangent along axis0
+  Vec3<mjtNum> t2 = {0, 0, 0};  // tangent along axis1
   int idx = 0;
   for (int l0 = 0; l0 <= order; l0++) {
     for (int l1 = 0; l1 <= order; l1++) {
@@ -771,7 +773,7 @@ void mju_flexInterpRotation2D(int order, const mjtNum* xpos_f, int npe,
   }
 
   // normal = t1 x t2
-  mjtNum normal[3];
+  Vec3<mjtNum> normal;
   mju_cross(normal, t1, t2);
 
   // build 3x3 matrix with columns assigned to canonical axes (row-major)
@@ -920,7 +922,7 @@ void mju_shellTrackInterior(mjtNum* nodexpos, int nx, int ny, int nz) {
         mjtNum t = (mjtNum)j / (ny-1);
         mjtNum u = (mjtNum)k / (nz-1);
 
-        mjtNum result[3] = {0, 0, 0};
+        Vec3<mjtNum> result = {0, 0, 0};
 
         // --- face contributions (bilinear interpolation on each face pair) ---
         // x-faces: i=0 and i=nx-1
@@ -1666,11 +1668,11 @@ int mju_outsideBox(const mjtNum point[3], const mjtNum pos[3], const mjtNum mat[
   }
 
   // vector from pos to point, projected to box frame
-  mjtNum vec[3] = {point[0]-pos[0], point[1]-pos[1], point[2]-pos[2]};
+  Vec3<mjtNum> vec = {point[0]-pos[0], point[1]-pos[1], point[2]-pos[2]};
   mju_mulMatTVec3(vec, mat, vec);
 
   // big: inflated box
-  mjtNum big[3] = {size[0], size[1], size[2]};
+  Vec3<mjtNum> big = {size[0], size[1], size[2]};
   if (inflate > 1) {
     mju_scl3(big, big, inflate);
   }
@@ -1688,7 +1690,7 @@ int mju_outsideBox(const mjtNum point[3], const mjtNum pos[3], const mjtNum mat[
   }
 
   // check if inside small (deflated) box
-  mjtNum small[3] = {size[0]/inflate, size[1]/inflate, size[2]/inflate};
+  Vec3<mjtNum> small = {size[0]/inflate, size[1]/inflate, size[2]/inflate};
   if (vec[0] < small[0] && vec[0] > -small[0] &&
       vec[1] < small[1] && vec[1] > -small[1] &&
       vec[2] < small[2] && vec[2] > -small[2]) {

@@ -15,6 +15,7 @@
 #include <math.h>
 
 #include "engine/engine_collision_primitive.h"
+#include "cc/vec.h"
 #include "engine/engine_inline.h"
 #include "engine/engine_util_blas.h"
 #include "engine/engine_util_misc.h"
@@ -35,8 +36,8 @@ int mjraw_SphereBox(mjPreContact* con, mjtNum margin,
                     const mjtNum* pos1, const mjtNum* mat1, const mjtNum* size1,
                     const mjtNum* pos2, const mjtNum* mat2, const mjtNum* size2) {
   int i, k;
-  mjtNum tmp[3], center[3], clamped[3], deepest[3];
-  mjtNum pos[3];
+  Vec3<mjtNum> tmp, center, clamped, deepest;
+  Vec3<mjtNum> pos;
   mjtNum dist, closest;
 
   mji_sub3(tmp, pos1, pos2);
@@ -63,7 +64,7 @@ int mjraw_SphereBox(mjPreContact* con, mjtNum margin,
       }
     }
 
-    mjtNum nearest[3] = {0};
+    Vec3<mjtNum> nearest = {0};
     nearest[k / 2] = (k % 2 ? -1 : 1);
 
     mji_copy3(pos, center);
@@ -116,8 +117,8 @@ int mjraw_CapsuleBox(mjPreContact* con, mjtNum margin,
                      const mjtNum* pos1, const mjtNum* mat1, const mjtNum* size1,
                      const mjtNum* pos2, const mjtNum* mat2,
                      const mjtNum* size2) {
-  mjtNum tmp1[3], tmp2[3], tmp3[3], halfaxis[3], axis[3], dif[3];
-  mjtNum pos[3];          // position of capsule in box-local frame
+  Vec3<mjtNum> tmp1, tmp2, tmp3, halfaxis, axis, dif;
+  Vec3<mjtNum> pos;          // position of capsule in box-local frame
 
   mjtNum halflength;      // half of capsule's length
   mjtNum bestdist;        // closest contact point distance
@@ -614,7 +615,8 @@ int _boxbox(const mjModel* M, const mjData* D, mjPreContact* con, int g1, int g2
          plen2[3];
   mjtNum rotmore[9], p[3], r[9], s[3], ss[3], lp[3], rt[9], points[mjMAXCONPAIR][3],
          depth[mjMAXCONPAIR], pts[6][3], ppts2[4][2], pu[4][3], axi[3][3];
-  mjtNum linesu[4][6], lines[4][6], clnorm[3], rnorm[3];
+  Vec3<mjtNum> clnorm, rnorm;
+  mjtNum linesu[4][6], lines[4][6];
   mjtNum penetration, c1, c2, c3, a, b, c, d, lx, ly, hz, l, x, y, u, v, llx, lly, innorm, margin2;
 
   int i0, i1, i2;
@@ -1367,8 +1369,8 @@ int mjc_BoxBox(const mjModel* m, mjData* d, mjPreContact* con, int g1, int g2, m
   // find bad: contacts outside one of the boxes
   for (int i=0; i < num; i++) {
     // box sizes with margin
-    mjtNum sz1[3] = {size1[0] + margin, size1[1] + margin, size1[2] + margin};
-    mjtNum sz2[3] = {size2[0] + margin, size2[1] + margin, size2[2] + margin};
+    Vec3<mjtNum> sz1 = {size1[0] + margin, size1[1] + margin, size1[2] + margin};
+    Vec3<mjtNum> sz2 = {size2[0] + margin, size2[1] + margin, size2[2] + margin};
 
     // relative distance from surface (1%) outside of which box-box contacts are removed
     static mjtNum kRemoveRatio = 1.01;

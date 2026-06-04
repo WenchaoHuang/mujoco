@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_core_smooth.h"
+#include "cc/vec.h"
 
 #include <stddef.h>
 
@@ -58,7 +59,8 @@ void mj_kinematics1(const mjModel* m, mjData* d) {
       if (d->body_awake[i] == mjS_STATIC) continue;
     }
 
-    mjtNum xpos[3], xquat[4];
+    Vec3<mjtNum> xpos;
+    mjtNum xquat[4];
     int jntadr = m->body_jntadr[i];
     int jntnum = m->body_jntnum[i];
 
@@ -105,7 +107,7 @@ void mj_kinematics1(const mjModel* m, mjData* d) {
       }
 
       // accumulate joints, compute xpos and xquat for this body
-      mjtNum xanchor[3], xaxis[3];
+      Vec3<mjtNum> xanchor, xaxis;
       for (int j=0; j < jntnum; j++) {
         // get joint id, qpos address, joint type
         int jid = jntadr + j;
@@ -141,7 +143,7 @@ void mj_kinematics1(const mjModel* m, mjData* d) {
             mju_mulQuat(xquat, xquat, qloc);
 
             // correct for off-center rotation
-            mjtNum vec[3];
+            Vec3<mjtNum> vec;
             mji_rotVecQuat(vec, m->jnt_pos+3*jid, xquat);
             mji_sub3(xpos, xanchor, vec);
           }
@@ -263,7 +265,7 @@ void mj_comPos(const mjModel* m, mjData* d) {
     // accumulate moment to parent, rescale if sleeping
     int parent = m->body_parentid[i];
     if (sleep_filter && d->body_awake[i] == mjS_ASLEEP) {
-      mjtNum child_moment[3];
+      Vec3<mjtNum> child_moment;
       mji_scl3(child_moment, d->subtree_com+3*i, m->body_subtreemass[i]);
       mji_addTo3(d->subtree_com+3*parent, child_moment);
     } else {
@@ -290,7 +292,7 @@ void mj_comPos(const mjModel* m, mjData* d) {
   for (int b=1; b < nbody; b++) {
     int i = sleep_filter ? d->body_awake_ind[b] : b;
 
-    mjtNum offset[3];
+    Vec3<mjtNum> offset;
     mji_sub3(offset, d->xipos+3*i, d->subtree_com+3*m->body_rootid[i]);
     mju_inertCom(d->cinert+10*i, m->body_inertia+3*i, d->ximat+9*i, offset, m->body_mass[i]);
   }
@@ -309,7 +311,7 @@ void mj_comPos(const mjModel* m, mjData* d) {
       int da = 6*m->jnt_dofadr[j];
 
       // compute com-anchor vector
-      mjtNum offset[3], axis[3];
+      Vec3<mjtNum> offset, axis;
       mji_sub3(offset, d->subtree_com+3*m->body_rootid[i], d->xanchor+3*j);
 
       // create motion dof
@@ -396,7 +398,7 @@ void mj_camlight(const mjModel* m, mjData* d) {
     case mjCAMLIGHT_TARGETBODYCOM:
       // only if target body is specified
       if (id1 >= 0) {
-        mjtNum pos[3];
+        Vec3<mjtNum> pos;
         // get position to look at
         if (m->cam_mode[i] == mjCAMLIGHT_TARGETBODY) {
           mji_copy3(pos, d->xpos+3*id1);
@@ -468,7 +470,7 @@ void mj_camlight(const mjModel* m, mjData* d) {
       // only if target body is specified
       if (id1 >= 0) {
         // get position to look at
-        mjtNum lookat[3];
+        Vec3<mjtNum> lookat;
         if (m->light_mode[i] == mjCAMLIGHT_TARGETBODY) {
           mji_copy3(lookat, d->xpos+3*id1);
         } else {
@@ -512,7 +514,7 @@ void mj_updateDynamicBVH(const mjModel* m, mjData* d, int bvhadr, int bvhnum) {
         const mjtNum* aabb2 = d->bvh_aabb_dyn + 6*(bvhadr - m->nbvhstatic + child2);
 
         // compute new (min, max)
-        mjtNum xmin[3], xmax[3];
+        Vec3<mjtNum> xmin, xmax;
         for (int k=0; k < 3; k++) {
           xmin[k] = mju_min(aabb1[k] - aabb1[k+3], aabb2[k] - aabb2[k+3]);
           xmax[k] = mju_max(aabb1[k] + aabb1[k+3], aabb2[k] + aabb2[k+3]);
@@ -616,7 +618,7 @@ void mj_flex(const mjModel* m, mjData* d) {
         mju_zero3(d->flexvert_xpos+3*i);
 
         // cell lookup: get local coords and node indices
-        mjtNum local[3];
+        Vec3<mjtNum> local;
         int nodeindices[27];  // max npc for quadratic: 3^3 = 27
         mju_cellLookup(m->flex_vert0 + 3*i, m->flex_cellnum+3*f, order, local, nodeindices);
         mju_interpolate3D(d->flexvert_xpos+3*i, local, nodexpos, order, nodeindices);
@@ -636,7 +638,7 @@ void mj_flex(const mjModel* m, mjData* d) {
       const mjtNum* vert = d->flexvert_xpos + 3*m->flex_vertadr[f];
 
       // compute min and max along each global axis
-      mjtNum xmin[3], xmax[3];
+      Vec3<mjtNum> xmin, xmax;
       mji_copy3(xmin, vert+3*edata[0]);
       mji_copy3(xmax, vert+3*edata[0]);
       for (int i=1; i <= dim; i++) {
@@ -716,7 +718,7 @@ void mj_flex(const mjModel* m, mjData* d) {
       mjtNum* pos2 = d->flexvert_xpos + 3*(vbase+v2);
 
       // vec = unit vector from v1 to v2, compute edge length
-      mjtNum vec[3];
+      Vec3<mjtNum> vec;
       mji_sub3(vec, pos2, pos1);
       d->flexedge_length[ebase+e] = mju_normalize3(vec);
 
@@ -771,7 +773,7 @@ void mj_flex(const mjModel* m, mjData* d) {
           int e = adj_edges[v_edge_adr[v] + k];
 
           // compute rest configuration edge vector
-          mjtNum dx[3];
+          Vec3<mjtNum> dx;
           int v1 = m->flex_edge[2 * (ebase + e)];
           int v2 = m->flex_edge[2 * (ebase + e) + 1];
           mju_sub3(dx, m->flex_vert0 + 3 * (vbase + v2), m->flex_vert0 + 3 * (vbase + v1));
@@ -781,7 +783,7 @@ void mj_flex(const mjModel* m, mjData* d) {
           dx[1] *= 2 * m->flex_size[3 * f + 1];
           dx[2] *= 2 * m->flex_size[3 * f + 2];
 
-          mjtNum dy[3];
+          Vec3<mjtNum> dy;
           mju_sub3(dy, d->flexvert_xpos + 3 * (vbase + v2), d->flexvert_xpos + 3 * (vbase + v1));
 
           // get mass of neighbor vertex
@@ -841,7 +843,7 @@ void mj_flex(const mjModel* m, mjData* d) {
 
         for (int k = 0; k < v_edge_cnt[v]; ++k) {
           int e = adj_edges[v_edge_adr[v] + k];
-          mjtNum dx[3];  // rest edge vector
+          Vec3<mjtNum> dx;  // rest edge vector
           int v1 = m->flex_edge[2 * (ebase + e)];
           int v2 = m->flex_edge[2 * (ebase + e) + 1];
           mju_sub3(dx, m->flex_vert0 + 3 * (vbase + v2), m->flex_vert0 + 3 * (vbase + v1));
@@ -856,7 +858,7 @@ void mj_flex(const mjModel* m, mjData* d) {
             if (weight < mjMINVAL) weight = mjMINVAL;
           }
 
-          mjtNum dI1dy1[3], dI1dy2[3], dI2dy[3], dI2dy1[3], dI2dy2[3];
+          Vec3<mjtNum> dI1dy1, dI1dy2, dI2dy, dI2dy1, dI2dy2;
 
           // dI1/dy1, dI1/dy2 (scaled by weight)
           mju_mulMatVec(dI1dy1, FB, dx, 3, 2);
@@ -1056,7 +1058,7 @@ void mj_tendon(const mjModel* m, mjData* d) {
       for (int k=0; k < (wlen < 0 ? 1 : 3); k++) {
         if (wbody[k] != wbody[k+1]) {
           // get 3D position difference, normalize
-          mjtNum dif[3];
+          Vec3<mjtNum> dif;
           mji_sub3(dif, wpnt+3*k+3, wpnt+3*k);
           mju_normalize3(dif);
 
@@ -1185,12 +1187,12 @@ mjtNum mj_tendonDot(const mjModel* m, mjData* d, int id, const mjtNum* vec) {
     // accumulate moments if consecutive points are in different bodies
     if (wbody[0] != wbody[1]) {
       // dpnt = 3D position difference, normalize
-      mjtNum dpnt[3];
+      Vec3<mjtNum> dpnt;
       mju_sub3(dpnt, wpnt+3, wpnt);
       mjtNum norm = mju_normalize3(dpnt);
 
       // dvel = d / dt (dpnt)
-      mjtNum dvel[3];
+      Vec3<mjtNum> dvel;
       mju_sub3(dvel, wvel+3, wvel);
       mjtNum dot = mju_dot3(dpnt, dvel);
       mju_addToScl3(dvel, dpnt, -dot);
@@ -1326,13 +1328,14 @@ void mj_transmission(const mjModel* m, mjData* d) {
       // ball joint: 3D wrench gear
       else if (m->jnt_type[id] == mjJNT_BALL) {
         // axis: expmap representation of quaternion
-        mjtNum axis[3], quat[4];
+        Vec3<mjtNum> axis;
+        mjtNum quat[4];
         mji_copy4(quat, d->qpos+m->jnt_qposadr[id]);
         mju_normalize4(quat);
         mji_quat2Vel(axis, quat, 1);
 
         // gearAxis: rotate to parent frame if necessary
-        mjtNum gearAxis[3];
+        Vec3<mjtNum> gearAxis;
         if (m->actuator_trntype[i] == mjTRN_JOINT) {
           mji_copy3(gearAxis, gear);
         } else {
@@ -1362,7 +1365,7 @@ void mj_transmission(const mjModel* m, mjData* d) {
         length[i] = 0;
 
         // gearAxis: rotate to world frame if necessary
-        mjtNum gearAxis[3];
+        Vec3<mjtNum> gearAxis;
         if (m->actuator_trntype[i] == mjTRN_JOINT) {
           mji_copy3(gearAxis, gear+3);
         } else {
@@ -1396,7 +1399,7 @@ void mj_transmission(const mjModel* m, mjData* d) {
         mjtNum axis[3] = {d->site_xmat[9 * idslider + 2],
                           d->site_xmat[9 * idslider + 5],
                           d->site_xmat[9 * idslider + 8]};
-        mjtNum vec[3];
+        Vec3<mjtNum> vec;
         mju_sub3(vec, d->site_xpos+3*id, d->site_xpos+3*idslider);
 
         // compute length and determinant
@@ -1414,7 +1417,7 @@ void mj_transmission(const mjModel* m, mjData* d) {
         }
 
         // compute derivatives of length w.r.t. vec and axis
-        mjtNum dlda[3], dldv[3];
+        Vec3<mjtNum> dlda, dldv;
         if (ok) {
           mju_scl3(dldv, axis, 1-av/sdet);
           mju_scl3(dlda, vec, 1/sdet);        // use dlda as temp
@@ -1535,7 +1538,7 @@ void mj_transmission(const mjModel* m, mjData* d) {
         // translational transmission
         if (!mju_isZero(gear, 3)) {
           // vec: site position in reference site frame
-          mjtNum vec[3];
+          Vec3<mjtNum> vec;
           mju_sub3(vec, d->site_xpos+3*id, d->site_xpos+3*refid);
           mju_mulMatTVec3(vec, d->site_xmat+9*refid, vec);
 
@@ -1575,7 +1578,7 @@ void mj_transmission(const mjModel* m, mjData* d) {
           mji_mulQuat(refquat, m->site_quat+4*refid, d->xquat+4*m->site_bodyid[refid]);
 
           // convert difference to expmap (axis-angle)
-          mjtNum vec[3];
+          Vec3<mjtNum> vec;
           mji_subQuat(vec, quat, refquat);
 
           // add length: dot product with gear
@@ -2344,7 +2347,7 @@ void mj_subtreeVel(const mjModel* m, mjData* d) {
     mju_scl3(d->subtree_linvel+3*i, body_vel+6*i+3, m->body_mass[i]);
 
     // body angular momentum
-    mjtNum dv[3];
+    Vec3<mjtNum> dv;
     mju_mulMatTVec3(dv, d->ximat+9*i, body_vel+6*i);
     dv[0] *= m->body_inertia[3*i];
     dv[1] *= m->body_inertia[3*i+1];
@@ -2373,7 +2376,7 @@ void mj_subtreeVel(const mjModel* m, mjData* d) {
     int parent = m->body_parentid[i];
 
     // momentum wrt body i
-    mjtNum dx[3], dv[3], dp[3], dL[3];
+    Vec3<mjtNum> dx, dv, dp, dL;
     mju_sub3(dx, d->xipos+3*i, d->subtree_com+3*i);
     mju_sub3(dv, body_vel+6*i+3, d->subtree_linvel+3*i);
     mju_scl3(dp, dv, m->body_mass[i]);
@@ -2550,7 +2553,8 @@ void mj_rnePostConstraint(const mjModel* m, mjData* d) {
 
     int id = d->efc_id[i];
     mjtNum* eq_data = m->eq_data + mjNEQDATA*id;
-    mjtNum pos[3], *offset;
+    Vec3<mjtNum> pos;
+    mjtNum *offset;
     int k, obj1, obj2, body_semantic;
     switch ((mjtEq) m->eq_type[id]) {
     case mjEQ_CONNECT:

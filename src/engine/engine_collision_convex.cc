@@ -1,4 +1,4 @@
-﻿// Copyright 2021 DeepMind Technologies Limited
+// Copyright 2021 DeepMind Technologies Limited
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "engine/engine_collision_convex.h"
+#include "cc/vec.h"
 
 #include <float.h>
 #include <stddef.h>
@@ -236,7 +237,7 @@ static void mjc_capsuleSupport(mjtNum res[3], mjCCDObj* obj, const mjtNum dir[3]
   mjtNum length = obj->size[1];
 
   // rotate dir to geom local frame
-  mjtNum local_dir[3], local_supp[3];
+  Vec3<mjtNum> local_dir, local_supp;
   mulMatTVec3(local_dir, mat, dir);
 
   // start with sphere
@@ -260,7 +261,7 @@ static void mjc_ellipsoidSupport(mjtNum res[3], mjCCDObj* obj, const mjtNum dir[
   const mjtNum* size = obj->size;
 
   // rotate dir to geom local frame
-  mjtNum local_dir[3], local_supp[3];
+  Vec3<mjtNum> local_dir, local_supp;
   mulMatTVec3(local_dir, mat, dir);
 
   // find support point on unit sphere: scale dir by ellipsoid sizes
@@ -297,7 +298,7 @@ static void mjc_cylinderSupport(mjtNum res[3], mjCCDObj* obj, const mjtNum dir[3
   const mjtNum* size = obj->size;
 
   // rotate dir to geom local frame
-  mjtNum local_dir[3], local_supp[3];
+  Vec3<mjtNum> local_dir, local_supp;
   mulMatTVec3(local_dir, mat, dir);
 
   mjtNum n2 = local_dir[0]*local_dir[0] + local_dir[1]*local_dir[1];
@@ -321,7 +322,7 @@ static void mjc_boxSupport(mjtNum res[3], mjCCDObj* obj, const mjtNum dir[3]) {
   const mjtNum* size = obj->size;
 
   // rotate dir to geom local frame
-  mjtNum local_dir[3], local_supp[3];
+  Vec3<mjtNum> local_dir, local_supp;
   mulMatTVec3(local_dir, mat, dir);
 
   // find support point in local frame
@@ -352,7 +353,7 @@ static void mjc_meshSupport(mjtNum res[3], mjCCDObj* obj, const mjtNum dir[3]) {
   const float* verts = obj->data.mesh.vert;
   int nverts = obj->data.mesh.nvert;
 
-  mjtNum local_dir[3];
+  Vec3<mjtNum> local_dir;
   mulMatTVec3(local_dir, mat, dir);
 
   mjtNum max = -FLT_MAX;
@@ -398,7 +399,7 @@ static void mjc_hillclimbSupport(mjtNum res[3], mjCCDObj* obj, const mjtNum dir[
   const mjtNum* mat = obj->mat;
 
   // rotate dir to geom local frame
-  mjtNum local_dir[3];
+  Vec3<mjtNum> local_dir;
   mulMatTVec3(local_dir, mat, dir);
 
   mjtNum max = -FLT_MAX;
@@ -540,7 +541,7 @@ void mjccd_support(const void *_obj, const ccd_vec3_t *_dir, ccd_vec3_t *vec) {
   mjtNum tmp, vdot;
 
   const mjtNum* size = obj->size;          // geom sizes
-  mjtNum local_dir[3];                    // direction in geom local frame
+  Vec3<mjtNum> local_dir;                    // direction in geom local frame
 
   // rotate dir to geom local frame
   mju_mulMatTVec3(local_dir, obj->mat, dir);
@@ -810,7 +811,8 @@ static int mjc_isDistinctContact(const mjPreContact* con, int ncon, mjtNum toler
 // in-place rotation of spatial frame around given point of origin
 static void mju_rotateFrame(const mjtNum origin[3], const mjtNum rot[9],
                             mjtNum xmat[9], mjtNum xpos[3]) {
-  mjtNum mat[9], vec[3], rel[3];
+  Vec3<mjtNum> vec, rel;
+  mjtNum mat[9];
 
   // rotate frame: xmat = rot*xmat
   mju_mulMatMat3(mat, rot, xmat);
@@ -949,7 +951,7 @@ static int addplanemesh(mjPreContact* con, const float vertex[3],
                         const mjtNum pos2[3], const mjtNum mat2[9],
                         const mjtNum first[3], mjtNum rbound) {
   // compute point in global coordinates
-  mjtNum pnt[3], v[3] = {vertex[0], vertex[1], vertex[2]};
+  Vec3<mjtNum> pnt, v = {vertex[0], vertex[1], vertex[2]};
   mju_mulMatVec3(pnt, mat2, v);
   mju_addTo3(pnt, pos2);
 
@@ -959,7 +961,7 @@ static int addplanemesh(mjPreContact* con, const float vertex[3],
   }
 
   // pnt-pos difference vector
-  mjtNum dif[3];
+  Vec3<mjtNum> dif;
   mji_sub3(dif, pnt, pos1);
 
   // set distance
@@ -984,7 +986,7 @@ int mjc_PlaneConvex(const mjModel* m, mjData* d, mjPreContact* con, int g1, int 
   const mjtNum* pos2  = d->geom_xpos + 3*g2;
   const mjtNum* mat2  = d->geom_xmat + 9*g2;
 
-  mjtNum dif[3], normal[3] = {mat1[2], mat1[5], mat1[8]};
+  Vec3<mjtNum> dif, normal = {mat1[2], mat1[5], mat1[8]};
   ccd_vec3_t ccd_dir, ccd_vec;
   mjCCDObj obj;
   mjc_initCCDObj(&obj, m, d, g2, 0);
@@ -1021,7 +1023,7 @@ int mjc_PlaneConvex(const mjModel* m, mjData* d, mjPreContact* con, int g1, int 
   vertdata = m->mesh_vert + 3*m->mesh_vertadr[m->geom_dataid[g]];
 
   // express dir in geom local frame
-  mjtNum locdir[3];
+  Vec3<mjtNum> locdir;
   mju_mulMatTVec3(locdir, d->geom_xmat+9*g, ccd_dir.v);
 
   // inclusion threshold along locdir, relative to geom2 center
@@ -1138,7 +1140,7 @@ int mjc_ConvexHField(const mjModel* m, mjData* d, mjPreContact* con, int g1, int
   // try early return using box-sphere test
 
   // express geom2 pos in hfield frame
-  mjtNum local_pos[3] = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
+  Vec3<mjtNum> local_pos = {pos2[0] - pos1[0], pos2[1] - pos1[1], pos2[2] - pos1[2]};
   mju_mulMatTVec3(local_pos, mat1, local_pos);
 
   // sphere radius is geom2 rbound + margin
@@ -1166,7 +1168,7 @@ int mjc_ConvexHField(const mjModel* m, mjData* d, mjPreContact* con, int g1, int
   mji_copy9(obj2.mat, mat);
   mji_copy3(obj2.pos, local_pos);
 
-  mjtNum local_dir[3] = {0, 0, 0}, res[3];
+  Vec3<mjtNum> local_dir = {0, 0, 0}, res;
 
   // get support point in +X
   local_dir[0] = 1;
@@ -1313,11 +1315,11 @@ static int mjc_ellipsoidInside(mjtNum nrm[3], const mjtNum pos[3], const mjtNum 
     }
 
     // new point on ellipsoid
-    mjtNum pnt[3];
+    Vec3<mjtNum> pnt;
     mji_addScl3(pnt, pos, nrm, x);
 
     // normal at new point
-    mjtNum newnrm[3] = {pnt[0]*S2inv[0], pnt[1]*S2inv[1], pnt[2]*S2inv[2]};
+    Vec3<mjtNum> newnrm = {pnt[0]*S2inv[0], pnt[1]*S2inv[1], pnt[2]*S2inv[2]};
     mju_normalize3(newnrm);
 
     // save change and assign
@@ -1341,8 +1343,8 @@ static int mjc_ellipsoidOutside(mjtNum nrm[3], const mjtNum pos[3], const mjtNum
   const mjtNum tolerance = 1e-6;
 
   // precompute quantities
-  mjtNum S2[3] = {size[0]*size[0], size[1]*size[1], size[2]*size[2]};
-  mjtNum PS2[3] = {pos[0]*pos[0]*S2[0], pos[1]*pos[1]*S2[1], pos[2]*pos[2]*S2[2]};
+  Vec3<mjtNum> S2 = {size[0]*size[0], size[1]*size[1], size[2]*size[2]};
+  Vec3<mjtNum> PS2 = {pos[0]*pos[0]*S2[0], pos[1]*pos[1]*S2[1], pos[2]*pos[2]*S2[2]};
 
   // main iteration
   mjtNum la = 0;
@@ -1424,7 +1426,7 @@ void mjc_fixNormal(const mjModel* m, const mjData* d, mjPreContact* con, int g1,
       mjtNum* size = m->geom_size + 3*gid[i];
 
       // map contact point and normal to local frame
-      mjtNum dif[3], pos1[3], nrm[3];
+      Vec3<mjtNum> dif, pos1, nrm;
       mju_sub3(dif, con->pos, d->geom_xpos+3*gid[i]);
       mju_mulMatTVec3(pos1, mat, dif);
       mju_mulMatTVec3(nrm, mat, normal[i]);
@@ -1574,7 +1576,8 @@ int mjc_ConvexElem(const mjModel* m, mjData* d, mjContact* con, int g1, int f1, 
 // test a height field and a flex element for collision
 int mjc_HFieldElem(const mjModel* m, mjData* d, mjContact* con, int g, int f, int e,
                    mjtNum margin) {
-  mjtNum vec[3], dx, dy;
+  Vec3<mjtNum> vec;
+  mjtNum dx, dy;
   mjtNum xmin, xmax, ymin, ymax, zmin, zmax;
   int dr[2], cnt, rmin, rmax, cmin, cmax;
   mjCCDObj obj1;
@@ -1614,7 +1617,7 @@ int mjc_HFieldElem(const mjModel* m, mjData* d, mjContact* con, int g, int f, in
   }
 
   // save elem center, transform to hfield frame
-  mjtNum savecenter[3];
+  Vec3<mjtNum> savecenter;
   mji_copy3(savecenter, ecenter);
   mji_sub3(vec, ecenter, hpos);
   mji_mulMatTVec3(ecenter, hmat, vec);
