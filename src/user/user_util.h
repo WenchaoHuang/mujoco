@@ -16,6 +16,8 @@
 #define MUJOCO_SRC_USER_USER_UTIL_H_
 
 #include <algorithm>
+#include <cctype>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -32,22 +34,57 @@ const double mjEPS = 1E-14;     // minimum value in various calculations
 const double mjMINMASS = 1E-6;  // minimum mass allowed
 
 // check if numeric variable is defined:  !_isnan(num)
-bool mjuu_defined(double num);
+inline bool mjuu_defined(double num) {
+  return !std::isnan(num);
+}
 
 // compute linear address of M[g1][g2] where M is triangular n-by-n
 // return -1 if inputs are invalid
-int mjuu_matadr(int g1, int g2, int n);
+inline int mjuu_matadr(int g1, int g2, int n) {
+  if (g1 < 0 || g2 < 0 || g1 >= n || g2 >= n) {
+    return -1;
+  }
+
+  if (g1 > g2) {
+    int tmp = g1;
+    g1 = g2;
+    g2 = tmp;
+  }
+
+  return g1*n + g2;
+}
 
 // set 4D vector
-void mjuu_setvec(double* dest, double x, double y, double z, double w);
-void mjuu_setvec(float* dest, double x, double y, double z, double w);
+inline void mjuu_setvec(double* dest, double x, double y, double z, double w) {
+  dest[0] = x;
+  dest[1] = y;
+  dest[2] = z;
+  dest[3] = w;
+}
+inline void mjuu_setvec(float* dest, double x, double y, double z, double w) {
+  dest[0] = static_cast<float>(x);
+  dest[1] = static_cast<float>(y);
+  dest[2] = static_cast<float>(z);
+  dest[3] = static_cast<float>(w);
+}
 
 // set 3D vector
-void mjuu_setvec(double* dest, double x, double y, double z);
-void mjuu_setvec(float* dest, double x, double y, double z);
+inline void mjuu_setvec(double* dest, double x, double y, double z) {
+  dest[0] = x;
+  dest[1] = y;
+  dest[2] = z;
+}
+inline void mjuu_setvec(float* dest, double x, double y, double z) {
+  dest[0] = static_cast<float>(x);
+  dest[1] = static_cast<float>(y);
+  dest[2] = static_cast<float>(z);
+}
 
 // set 2D vector
-void mjuu_setvec(double* dest, double x, double y);
+inline void mjuu_setvec(double* dest, double x, double y) {
+  dest[0] = x;
+  dest[1] = y;
+}
 
 // copy real-valued vector
 template <class T1, class T2>
@@ -56,22 +93,46 @@ void mjuu_copyvec(T1* dest, const T2* src, int n) {
 }
 
 // add to double array
-void mjuu_addtovec(double* dest, const double* src, int n);
+inline void mjuu_addtovec(double* dest, const double* src, int n) {
+  for (int i = 0; i < n; i++) {
+    dest[i] += src[i];
+  }
+}
 
 // zero array
-void mjuu_zerovec(double* dest, int n);
+inline void mjuu_zerovec(double* dest, int n) {
+  for (int i = 0; i < n; i++) {
+    dest[i] = 0;
+  }
+}
 
 // zero float array
-void mjuu_zerovec(float* dest, int n);
+inline void mjuu_zerovec(float* dest, int n) {
+  for (int i = 0; i < n; i++) {
+    dest[i] = 0;
+  }
+}
 
 // dot-product in 3D
-double mjuu_dot3(const double* a, const double* b);
+inline double mjuu_dot3(const double* a, const double* b) {
+  return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+}
 
 // distance between 3D points
-double mjuu_dist3(const double* a, const double* b);
+inline double mjuu_dist3(const double* a, const double* b) {
+  return std::sqrt((a[0]-b[0])*(a[0]-b[0]) +
+                   (a[1]-b[1])*(a[1]-b[1]) +
+                   (a[2]-b[2])*(a[2]-b[2]));
+}
 
 // L1 norm between vectors
-double mjuu_L1(const double* a, const double* b, int n);
+inline double mjuu_L1(const double* a, const double* b, int n) {
+  double res = 0;
+  for (int i = 0; i < n; i++) {
+    res += std::abs(a[i]-b[i]);
+  }
+  return res;
+}
 
 // normalize vector to unit length, return previous length
 //  if norm(vec)<mjEPS, return 0 and do not change vector
@@ -79,7 +140,11 @@ double mjuu_normvec(double* vec, int n);
 float mjuu_normvec(float* vec, int n);
 
 // scale vector by scalar
-void mjuu_scalevec(double* res, const double* vec, double s, int n);
+inline void mjuu_scalevec(double* res, const double* vec, double s, int n) {
+  for (int i = 0; i < n; i++) {
+    res[i] = s * vec[i];
+  }
+}
 
 // convert quaternion to rotation matrix
 void mjuu_quat2mat(double* res, const double* quat);
@@ -199,19 +264,46 @@ class MJAPI FilePath {
 
   // return copy of the internal path string in lower case
   // (for case insensitive purposes)
-  std::string StrLower() const;
+  std::string StrLower() const {
+    std::string str = path_;
+    std::transform(str.begin(), str.end(), str.begin(),
+                   [](unsigned char c) {
+      return std::tolower(c);
+    });
+    return str;
+  }
 
   // return the extension of the file path (e.g. "hello.txt" -> ".txt")
-  std::string Ext() const;
+  std::string Ext() const {
+    std::size_t n = path_.find_last_of('.');
+    if (n == std::string::npos) {
+      return "";
+    }
+    return path_.substr(n, path_.size() - n);
+  }
 
   // concatenate two paths together
-  FilePath operator+(const FilePath& path) const;
+  FilePath operator+(const FilePath& path) const {
+    return FilePath(path_, path.path_);
+  }
 
   // return a new FilePath with the extension stripped
-  FilePath StripExt() const;
+  FilePath StripExt() const {
+    std::size_t n = path_.find_last_of('.');
+    if (n == std::string::npos) {
+      return FilePathFast(path_);
+    }
+    return FilePathFast(path_.substr(0, n));
+  }
 
   // return a new FilePath with the path stripped
-  FilePath StripPath() const;
+  FilePath StripPath() const {
+    std::size_t n = path_.find_last_of("/\\");
+    if (n == std::string::npos) {
+      return FilePathFast(path_);
+    }
+    return FilePathFast(path_.substr(n + 1, path_.size() - (n + 1)));
+  }
 
   // return a new FilePath with path lower cased
   FilePath Lower() const { return FilePathFast(StrLower()); }
@@ -270,21 +362,41 @@ template<> MJAPI std::vector<std::string> StringToVector(const std::string& s);
 }  // namespace mujoco::user
 
 // strip path from filename
-std::string mjuu_strippath(std::string filename);
+inline std::string mjuu_strippath(std::string filename) {
+  std::size_t start = filename.find_last_of("/\\");
+  if (start == std::string::npos) {
+    return filename;
+  }
+  return filename.substr(start + 1, filename.size() - start - 1);
+}
 
 // strip extension from filename
-std::string mjuu_stripext(std::string filename);
+inline std::string mjuu_stripext(std::string filename) {
+  std::size_t end = filename.find_last_of('.');
+  if (end == std::string::npos) {
+    return filename;
+  }
+  return filename.substr(0, end);
+}
 
 // get the extension of a filename
-std::string mjuu_getext(std::string_view filename);
+inline std::string mjuu_getext(std::string_view filename) {
+  std::size_t dot = filename.find_last_of('.');
+  if (dot == std::string::npos) {
+    return "";
+  }
+  return std::string(filename.substr(dot, filename.size() - dot));
+}
 
 // check if path is absolute
 bool mjuu_isabspath(std::string path);
 
 // assemble file paths
 std::string mjuu_combinePaths(const std::string& path1, const std::string& path2);
-std::string mjuu_combinePaths(const std::string& path1, const std::string& path2,
-                              const std::string& path3);
+inline std::string mjuu_combinePaths(const std::string& path1, const std::string& path2,
+                                     const std::string& path3) {
+  return mjuu_combinePaths(path1, mjuu_combinePaths(path2, path3));
+}
 
 // return type from content_type format {type}/{subtype}[;{parameter}={value}]
 std::optional<std::string_view> mjuu_parseContentTypeAttrType(std::string_view text);
@@ -296,6 +408,19 @@ std::optional<std::string_view> mjuu_parseContentTypeAttrSubtype(std::string_vie
 std::string mjuu_extToContentType(std::string_view filename);
 
 // get the length of the dirname portion of a given path
-int mjuu_dirnamelen(const char* path);
+inline int mjuu_dirnamelen(const char* path) {
+  if (!path) {
+    return 0;
+  }
+
+  int pos = -1;
+  for (int i = 0; path[i]; ++i) {
+    if (path[i] == '/' || path[i] == '\\') {
+      pos = i;
+    }
+  }
+
+  return pos + 1;
+}
 
 #endif  // MUJOCO_SRC_USER_USER_UTIL_H_

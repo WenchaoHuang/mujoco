@@ -1,4 +1,4 @@
-// Copyright 2021 DeepMind Technologies Limited
+﻿// Copyright 2021 DeepMind Technologies Limited
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -709,6 +709,7 @@ static void mj_springdamper(const mjModel* m, mjData* d) {
     }
   }
 
+#if 0
   // flex elasticity
   for (int f=0; f < m->nflex; f++) {
     if (m->flex_dim[f] == 1 || m->flex_rigid[f]) {
@@ -729,7 +730,7 @@ static void mj_springdamper(const mjModel* m, mjData* d) {
       mj_flexPassiveStretch(m, d, f, enbl_spring, enbl_damper);
     }
   }
-
+#endif
   // flexedge-level spring-dampers
   for (int f=0; f < m->nflex; f++) {
     mjtNum stiffness = enbl_spring ? m->flex_edgestiffness[f] : 0;

@@ -44,107 +44,6 @@
 #define strtod(X, Y) strtod_l((X), (Y), _c_locale)
 #endif
 
-// check if numeric variable is defined
-bool mjuu_defined(double num) {
-  return !std::isnan(num);
-}
-
-
-// compute address of M[g1][g2] where M is triangular n-by-n
-int mjuu_matadr(int g1, int g2, int n) {
-  if (g1 < 0 || g2 < 0 || g1 >= n || g2 >= n) {
-    return -1;
-  }
-
-  if (g1 > g2) {
-    int tmp = g1;
-    g1 = g2;
-    g2 = tmp;
-  }
-
-  return g1*n + g2;
-}
-
-
-// set 4D vector
-void mjuu_setvec(double* dest, double x, double y, double z, double w) {
-  dest[0] = x;
-  dest[1] = y;
-  dest[2] = z;
-  dest[3] = w;
-}
-void mjuu_setvec(float* dest, double x, double y, double z, double w) {
-  dest[0] = (float)x;
-  dest[1] = (float)y;
-  dest[2] = (float)z;
-  dest[3] = (float)w;
-}
-
-
-// set 3D vector
-void mjuu_setvec(double* dest, double x, double y, double z) {
-  dest[0] = x;
-  dest[1] = y;
-  dest[2] = z;
-}
-void mjuu_setvec(float* dest, double x, double y, double z) {
-  dest[0] = (float)x;
-  dest[1] = (float)y;
-  dest[2] = (float)z;
-}
-
-
-// set 2D vector
-void mjuu_setvec(double* dest, double x, double y) {
-  dest[0] = x;
-  dest[1] = y;
-}
-
-
-// add to double array
-void mjuu_addtovec(double* dest, const double* src, int n) {
-  for (int i=0; i < n; i++) {
-    dest[i] += src[i];
-  }
-}
-
-// zero double array
-void mjuu_zerovec(double* dest, int n) {
-  for (int i=0; i < n; i++) {
-    dest[i] = 0;
-  }
-}
-
-// zero float array
-void mjuu_zerovec(float* dest, int n) {
-  for (int i=0; i < n; i++) {
-    dest[i] = 0;
-  }
-}
-
-// dot-product in 3D
-double mjuu_dot3(const double* a, const double* b) {
-  return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
-}
-
-
-// distance between 3D points
-double mjuu_dist3(const double* a, const double* b) {
-  return sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]));
-}
-
-
-// L1 norm between vectors
-double mjuu_L1(const double* a, const double* b, int n) {
-  double res = 0;
-  for (int i=0; i < n; i++) {
-    res += std::abs(a[i]-b[i]);
-  }
-
-  return res;
-}
-
-
 // normalize vector to unit length, return previous length
 double mjuu_normvec(double* vec, const int n) {
   double nrm = 0;
@@ -190,13 +89,6 @@ float mjuu_normvec(float* vec, const int n) {
   }
 
   return nrm;
-}
-
-// scale vector by scalar
-void mjuu_scalevec(double* res, const double* vec, double s, int n) {
-  for (int i = 0; i < n; i++) {
-    res[i] = s * vec[i];
-  }
 }
 
 // convert quaternion to rotation matrix
@@ -839,23 +731,6 @@ void mjuu_trnVecPose(double res[3], const double pos[3], const double quat[4],
   res[2] += pos[2];
 }
 
-// strip directory from filename
-std::string mjuu_strippath(std::string filename) {
-  // find last pathsymbol
-  size_t start = filename.find_last_of("/\\");
-
-  // no path found: return original
-  if (start == std::string::npos) {
-    return filename;
-  }
-
-  // return name without path
-  else {
-    return filename.substr(start+1, filename.size()-start-1);
-  }
-}
-
-
 // compute frame quat and diagonal inertia from full inertia matrix, return error if any
 const char* mjuu_fullInertia(double quat[4], double inertia[3], const double fullinertia[6]) {
   if (!mjuu_defined(fullinertia[0])) {
@@ -886,30 +761,6 @@ const char* mjuu_fullInertia(double quat[4], double inertia[3], const double ful
   }
 
   return nullptr;
-}
-
-
-// strip extension
-std::string mjuu_stripext(std::string filename) {
-  // find last dot
-  size_t end = filename.find_last_of('.');
-
-  // no path found: return original
-  if (end == std::string::npos) {
-    return filename;
-  }
-
-  // return name without extension
-  return filename.substr(0, end);
-}
-
-std::string mjuu_getext(std::string_view filename) {
-  size_t dot = filename.find_last_of('.');
-
-  if (dot == std::string::npos) {
-    return "";
-  }
-  return std::string(filename.substr(dot, filename.size() - dot));
 }
 
 
@@ -955,14 +806,6 @@ std::string mjuu_combinePaths(const std::string& path1, const std::string& path2
     return path1 + "/" + path2;
   }
   return path1 + path2;
-}
-
-
-
-// assemble three file paths
-std::string mjuu_combinePaths(const std::string& path1, const std::string& path2,
-                              const std::string& path3) {
-  return mjuu_combinePaths(path1, mjuu_combinePaths(path2, path3));
 }
 
 
@@ -1049,22 +892,6 @@ std::string mjuu_extToContentType(std::string_view filename) {
   }
 }
 
-// get the length of the dirname portion of a given path
-int mjuu_dirnamelen(const char* path) {
-  if (!path) {
-    return 0;
-  }
-
-  int pos = -1;
-  for (int i = 0; path[i]; ++i) {
-    if (path[i] == '/' || path[i] == '\\') {
-      pos = i;
-    }
-  }
-
-  return pos + 1;
-}
-
 namespace mujoco::user {
 
 std::string FilePath::Combine(const std::string& s1, const std::string& s2) {
@@ -1111,31 +938,6 @@ std::string FilePath::PathReduce(const std::string& str) {
   return path.str();
 }
 
-FilePath FilePath::operator+(const FilePath& path) const {
-  return FilePath(path_, path.path_);
-}
-
-std::string FilePath::Ext() const {
-  std::size_t n = path_.find_last_of('.');
-
-  if (n == std::string::npos) {
-    return "";
-  }
-  return path_.substr(n, path_.size() - n);
-}
-
-FilePath FilePath::StripExt() const {
-  size_t n = path_.find_last_of('.');
-
-  // no extension
-  if (n == std::string::npos) {
-    return FilePathFast(path_);
-  }
-
-  // return path without extension
-  return FilePathFast(path_.substr(0, n));
-}
-
 // is directory absolute path
 std::string FilePath::AbsPrefix(const std::string& str) {
   // empty: not absolute
@@ -1168,27 +970,6 @@ std::string FilePath::AbsPrefix(const std::string& str) {
   }
 
   return "";
-}
-
-FilePath FilePath::StripPath() const {
-  // find last path symbol
-  std::size_t n = path_.find_last_of("/\\");
-
-  // no path
-  if (n == std::string::npos) {
-    return FilePathFast(path_);
-  }
-
-  return FilePathFast(path_.substr(n + 1, path_.size() - (n + 1)));
-}
-
-std::string FilePath::StrLower() const {
-  std::string str = path_;
-  std::transform(str.begin(), str.end(), str.begin(),
-                 [](unsigned char c) {
-      return std::tolower(c);
-    });
-  return str;
 }
 
 // read file into memory buffer
